@@ -22,7 +22,7 @@
 
 11. Narrative mechanics: theme consistency, story cohesion
 
-
+12. Collective dynamics and integration of attachment theory into Comp Psycho
 
 
 
@@ -31,5 +31,5 @@
 
 Reach: 
 
-12. Diffusion of story cohesion: make an algoirhtm that optimizes for story cohesion similar to how a diffusion model optimizes noise to become coherent as an image, we need to do the same to make a lazily connected story into something where all the plot points are more densely connected in logical coherence and continuity
+1. Diffusion of story cohesion: make an algoirhtm that optimizes for story cohesion similar to how a diffusion model optimizes noise to become coherent as an image, we need to do the same to make a lazily connected story into something where all the plot points are more densely connected in logical coherence and continuity
 
