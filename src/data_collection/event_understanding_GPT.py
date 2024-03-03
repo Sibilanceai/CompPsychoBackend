@@ -10,8 +10,18 @@ import requests
 import ast
 import re
 
-OPENAI_API_KEY = "your openai key"
-client = OpenAI(api_key = OPENAI_API_KEY)
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Access the API key
+api_key = os.getenv("OPENAI_API_KEY")
+print(api_key)
+openai.api_key = api_key
+client = OpenAI()
+
 # OpenAI.api_key = os.getenv('OPENAI_API_KEY')
 def extract_frames(video_path, interval=1):
     """
@@ -38,6 +48,7 @@ def analyze_frames_with_gpt4(frames, client):
     """
 
     # "Describe these video frames in terms of subject, action, and objects involved and format it like so (Subject: [subject], Action [action], Object [objects])."
+    # "add option to add hierachical levels and/or temporal dynamics and add that to a richer event representation"
     PROMPT_MESSAGES = [
         {
             "role": "user",
