@@ -5,6 +5,7 @@ from networkx.algorithms import community
 from sklearn.metrics import mutual_info_score
 import matplotlib.pyplot as plt
 from community import community_louvain
+from node2vec import Node2Vec
 
 # Load event sequences
 event_sequences = pd.read_csv("event_sequences.csv")
@@ -164,6 +165,31 @@ def analyze_assortativity(G, attribute_name):
     
     return assortativity_coefficient
 
+def homophily_analysis(G, attribute):
+    """
+    Perform a homophily analysis based on the distribution of node connections relative to an attribute.
+    
+    :param G: A NetworkX graph
+    :param attribute: The node attribute to perform homophily analysis on (e.g., 'group')
+    """
+    groups = set(nx.get_node_attributes(G, attribute).values())
+    connections_within_groups = {group: 0 for group in groups}
+    total_connections = 0
+    
+    for node in G.nodes(data=True):
+        node_group = node[1][attribute]
+        for neighbor in G[node[0]]:
+            total_connections += 1
+            neighbor_group = G.nodes[neighbor].get(attribute, None)
+            if node_group == neighbor_group:
+                connections_within_groups[node_group] += 1
+                
+    print("Homophily Analysis:")
+    for group, connections in connections_within_groups.items():
+        print(f"Group {group}: {connections / total_connections * 100:.2f}% of connections are within this group")
+
+
+
 def analyze_network_robustness(G, centrality_measure=nx.betweenness_centrality):
     # Calculate centrality
     centrality = centrality_measure(G)
@@ -182,6 +208,111 @@ def analyze_network_robustness(G, centrality_measure=nx.betweenness_centrality):
     print(f"Is the network still connected after removing top 10% central nodes? {is_connected}")
     
     return is_connected
+
+snapshots = [G_t1, G_t2, G_t3, ...]  # G_ti represents the network snapshot at time i
+
+
+def plot_network_evolution(snapshots):
+    """
+    Plots the evolution of various network metrics over time.
+    
+    :param snapshots: A list of NetworkX graphs representing the network at different time points.
+    """
+    metrics = {
+        'Number of Nodes': [],
+        'Number of Edges': [],
+        'Average Degree': [],
+        'Clustering Coefficient': []
+    }
+    
+    for G in snapshots:
+        metrics['Number of Nodes'].append(len(G.nodes()))
+        metrics['Number of Edges'].append(len(G.edges()))
+        degrees = [deg for node, deg in G.degree()]
+        metrics['Average Degree'].append(np.mean(degrees) if degrees else 0)
+        metrics['Clustering Coefficient'].append(nx.average_clustering(G))
+    
+    # Plotting
+    plt.figure(figsize=(14, 10))
+    for i, (metric, values) in enumerate(metrics.items(), start=1):
+        plt.subplot(2, 2, i)
+        plt.plot(values, marker='o', linestyle='-')
+        plt.title(metric)
+        plt.xlabel('Time Snapshot')
+        plt.ylabel(metric)
+    
+    plt.tight_layout()
+    plt.show()
+
+
+
+def analyze_community_evolution(snapshots):
+    """
+    Analyzes the evolution of community structure over time.
+    
+    :param snapshots: A list of NetworkX graphs representing the network at different time points.
+    """
+    community_changes = []
+
+    for G in snapshots:
+        partition = community_louvain.best_partition(G)
+        num_communities = len(set(partition.values()))
+        community_changes.append(num_communities)
+    
+    plt.figure(figsize=(8, 6))
+    plt.plot(community_changes, marker='o', linestyle='-')
+    plt.title('Evolution of Community Structure')
+    plt.xlabel('Time Snapshot')
+    plt.ylabel('Number of Communities')
+    plt.grid(True)
+    plt.show()
+
+def prepare_for_temporal_motif_analysis(network_snapshots):
+    # This method is a placeholder for preparing your network data
+    # for temporal motif analysis, which might involve identifying 
+    # recurring interaction patterns within and across snapshots.
+    print("Prepare your network snapshots for temporal motif analysis.")
+    # Actual implementation will depend on the motifs of interest
+    # and the tool or algorithm you plan to use.
+
+def longitudinal_network_analysis(network_snapshots):
+    metrics = {'Average Clustering': [], 'Average Shortest Path Length': []}
+    
+    for G in network_snapshots:
+        metrics['Average Clustering'].append(nx.average_clustering(G))
+        if nx.is_connected(G):
+            metrics['Average Shortest Path Length'].append(nx.average_shortest_path_length(G))
+        else:
+            metrics['Average Shortest Path Length'].append(float('inf'))
+    
+    # Plotting
+    plt.figure(figsize=(10, 5))
+    for metric, values in metrics.items():
+        plt.plot(values, label=metric)
+    plt.xlabel('Time (snapshot index)')
+    plt.ylabel('Metric Value')
+    plt.legend()
+    plt.show()
+
+
+
+def node_embedding_evolution(network_snapshots):
+    embeddings_over_time = []
+    for G in network_snapshots:
+        node2vec = Node2Vec(G, dimensions=64, walk_length=30, num_walks=200, workers=2)
+        model = node2vec.fit(window=10, min_count=1, batch_words=4)
+        embeddings_over_time.append(model.wv)
+    return embeddings_over_time
+
+def link_prediction_analysis(network_snapshots):
+    for i in range(len(network_snapshots)-1):
+        G1 = network_snapshots[i]
+        G2 = network_snapshots[i+1]
+        predicted_edges = nx.preferential_attachment(G1, G2.nodes())
+        # Process and analyze predicted_edges as needed
+        # This is a simplified placeholder. Actual implementation may vary based on
+        # the prediction method and how you compare predictions to the subsequent snapshot.
+        print(f"Snapshot {i} to {i+1}: Predicted new or strengthened connections.")
 
 
 """
