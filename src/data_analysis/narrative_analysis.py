@@ -1,3 +1,48 @@
+from sklearn.cluster import KMeans
+import numpy as np
+
+
+
+
+# Example feature vectors for characters or narratives
+features = np.array([
+    matrix.flatten() for matrix in all_matrices  # Replace `all_matrices` with your matrices
+])
+
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+# Assuming `features` is your dataset
+features = np.array([...])  # Your data here
+features = StandardScaler().fit_transform(features)  # It's often a good idea to scale your data
+
+wcss = []
+for i in range(1, 11):  # Try different numbers of clusters
+    kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=0)
+    kmeans.fit(features)
+    wcss.append(kmeans.inertia_)
+
+# Plotting the results onto a line graph to observe the 'Elbow'
+plt.plot(range(1, 11), wcss)
+plt.title('Elbow Method')
+plt.xlabel('Number of clusters')
+plt.ylabel('WCSS')  # Within cluster sum of squares
+plt.show()
+
+
+
+# Apply K-means clustering
+kmeans = KMeans(n_clusters=5)  # Adjust the number of clusters as needed
+kmeans.fit(features)
+labels = kmeans.labels_
+
+# Analyze the clusters
+# Here you can examine which characters or narratives fall into the same clusters
+
+
+
 """
 
 Focusing on the comparative analysis, incorporating unsupervised learning techniques such as cluster analysis can indeed provide insightful differentiation between groups based on their cognitive vector transitions. This approach can help in identifying distinct patterns or archetypes in both individual characters' cognitive vector transitions and overall narrative sequence transitions across all characters within a narrative. By doing so, you can uncover narrative archetypes or common pathways that characterize the storyline or behavior trends.
