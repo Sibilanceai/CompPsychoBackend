@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 from sklearn.metrics import mutual_info_score
+import matplotlib.pyplot as plt
 
 # Load event sequences
 event_sequences = pd.read_csv("event_sequences.csv")
@@ -29,46 +30,42 @@ all_individuals = filter_tracked_individuals(subjects, objects, tracked_individu
 G.add_nodes_from(all_individuals)
 
 
-# Calculate mutual information based on interaction
-def calculate_interaction_influence(interactions, transition_matrices):
-    influence_scores = {}
-    for subject, obj in interactions:
-        pre_interaction_matrix_subject = transition_matrices[subject]
-        pre_interaction_matrix_obj = transition_matrices[obj]
-        # You need to implement logic to update matrices based on interactions and then calculate mutual information
-        # This is a placeholder for demonstration
-        post_interaction_matrix_subject = update_matrix_based_on_interaction(pre_interaction_matrix_subject, subject, obj)
-        post_interaction_matrix_obj = update_matrix_based_on_interaction(pre_interaction_matrix_obj, obj, subject)
-        mutual_info = calculate_mutual_information(post_interaction_matrix_subject, post_interaction_matrix_obj)
-        influence_scores[(subject, obj)] = mutual_info
-    return influence_scores
+def calculate_differential_matrix(matrix_pre, matrix_post):
+    """Calculate the differential transition matrix."""
+    return matrix_post - matrix_pre
 
-# Function to calculate mutual information for all pairs among tracked individuals
-def calculate_all_mutual_informations(transition_matrices, tracked_individuals):
-    mutual_informations = {}
-    for person_a in tracked_individuals:
-        for person_b in tracked_individuals:
-            if person_a != person_b and person_a in transition_matrices and person_b in transition_matrices:
-                matrix_a = transition_matrices[person_a].flatten()
-                matrix_b = transition_matrices[person_b].flatten()
-                mi_score = mutual_info_score(matrix_a, matrix_b)
-                mutual_informations[(person_a, person_b)] = mi_score
-    return mutual_informations
+def update_graph_with_influence(G, interactions, transition_matrices_by_timestamp):
+    """Update the graph with mutual information scores based on differential matrices."""
+    for interaction in interactions:
+        subject, object, timestamp = interaction  # Assuming interaction tuple format
+        matrix_pre_subject = get_pre_interaction_matrix(subject, timestamp, transition_matrices_by_timestamp)
+        matrix_post_subject = get_post_interaction_matrix(subject, timestamp, transition_matrices_by_timestamp)
+        matrix_pre_object = get_pre_interaction_matrix(object, timestamp, transition_matrices_by_timestamp)
+        matrix_post_object = get_post_interaction_matrix(object, timestamp, transition_matrices_by_timestamp)
 
-# Calculate mutual information scores among tracked individuals
-mutual_informations = calculate_all_mutual_informations(transition_matrices, all_individuals)
+        differential_matrix_subject = calculate_differential_matrix(matrix_pre_subject, matrix_post_subject)
+        differential_matrix_object = calculate_differential_matrix(matrix_pre_object, matrix_post_object)
 
-# Define a threshold to determine significant influence
-threshold = 0.1  # Adjust based on your data's scale and distribution
+        # Flatten matrices to calculate mutual information
+        mi_score = mutual_info_score(differential_matrix_subject.flatten(), differential_matrix_object.flatten())
 
-# Add edges based on mutual information (representing influence)
-for pair, mi_score in mutual_informations.items():
-    if mi_score > threshold:
-        G.add_edge(pair[0], pair[1], weight=mi_score)
+        # Update the graph
+        if mi_score > threshold:  # Define a suitable threshold based on your analysis
+            if G.has_edge(subject, object):
+                # Update existing weight (could average, sum, or replace)
+                G[subject][object]['weight'] = (G[subject][object]['weight'] + mi_score) / 2
+            else:
+                G.add_edge(subject, object, weight=mi_score)
+
+def get_pre_interaction_matrix(individual, timestamp, transition_matrices_by_timestamp):
+    # Implement retrieval of the pre-interaction matrix for 'individual' just before 'timestamp'
+    pass
+
+def get_post_interaction_matrix(individual, timestamp, transition_matrices_by_timestamp):
+    # Implement retrieval of the post-interaction matrix for 'individual' just after 'timestamp'
+    pass
 
 # Visualization
-import matplotlib.pyplot as plt
-
 plt.figure(figsize=(10, 8))
 pos = nx.spring_layout(G)  # positions for all nodes
 nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10)
