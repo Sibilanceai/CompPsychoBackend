@@ -387,26 +387,35 @@ Node Embeddings: Using techniques like Node2Vec to generate vector representatio
 
 1. Node Degree Analysis
 Degree Centrality: Measures how connected or influential an individual is within the network. High degree centrality indicates individuals who have significant influence over or are influenced by many others, possibly acting as central figures in the group's social dynamics.
+
 2. Path Analysis
 Shortest Paths: Identifying the shortest paths between pairs of individuals can reveal the most direct lines of influence or pathways through which behaviors or information flow.
 Average Path Length: Offers insight into the group's cohesion or separation. A shorter average path length suggests a tightly-knit group where influences can quickly spread, while a longer average implies more isolated subgroups or individuals.
+
 3. Clustering and Community Detection
 Clustering Coefficient: Indicates the presence of tightly-knit subgroups or cliques within the network, where individuals are more densely connected to each other. High clustering might suggest subgroups with strong internal bonds or shared behaviors.
 Community Detection: Helps identify these subgroups or communities within the network explicitly. Communities might represent individuals with similar roles, behaviors, or positions within the group's social hierarchy.
+
 4. Centrality Measures
 Betweenness Centrality: Identifies individuals who serve as bridges or connectors between different parts of the network. These individuals might facilitate or control the flow of influence or information across the group.
 Closeness Centrality: Highlights individuals who can quickly influence or be influenced by others in the network, indicating their strategic position in the social fabric.
 Eigenvector Centrality: Points to individuals who are not just well-connected but are connected to other well-connected individuals, suggesting influential individuals in a network of influencers.
+
 5. Assortativity and Homophily
 Assortativity: Measures how similar individuals tend to connect more frequently than dissimilar ones, possibly in terms of behaviors, roles, or other attributes. This can indicate the presence of homophily - the tendency of individuals to associate with others who are similar to themselves.
+
 6. Network Robustness and Resilience
 Robustness Analysis: Evaluates how the network withstands disruptions, such as the loss of key individuals. This can reveal the network's vulnerability or resilience to changes, highlighting how dependent the group is on specific members for maintaining its social structure.
+
 7. Dynamics and Temporal Changes
 Temporal Network Analysis: Observing how the network structure evolves over time can provide insights into the dynamics of social relationships, the emergence of leaders or central figures, and how external events or internal group dynamics affect social bonds.
+
 8. Mutual Information and Influence
 Mutual Information Network: Analyzing the network based on mutual information can help understand the depth and complexity of influence between individuals, going beyond direct interactions to capture more subtle or indirect influences.
+
 9. Spectral Analysis
 Laplacian Spectrum: Offers a way to understand the network's fundamental properties, such as connectivity and the potential for partitioning the network into distinct communities or groups.
+
 10. Graph Embeddings and Machine Learning
 Node Embeddings: Utilizing machine learning to generate vector representations of individuals based on their network positions can facilitate clustering, visualization, and predictive modeling, revealing hidden patterns in social dynamics and potential predictors of behavior or role within the group.
 """
