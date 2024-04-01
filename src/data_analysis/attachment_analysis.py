@@ -3,9 +3,11 @@ import numpy as np
 import networkx as nx
 from networkx.algorithms import community
 from sklearn.metrics import mutual_info_score
+from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from community import community_louvain
 from node2vec import Node2Vec
+from scipy.stats import pearsonr
 
 # Load event sequences
 event_sequences = pd.read_csv("event_sequences.csv")
@@ -344,6 +346,170 @@ def laplacian_spectrum_analysis(G):
     
     # The number of near-zero eigenvalues indicates the number of connected components
     # Small eigenvalues indicate potential community structures
+
+
+
+# Formal Attachment Theory functions
+
+"""
+Proximity seeking can be quantified by analyzing the frequency and strength of connections (edges) initiated by an agent (node) towards others. 
+This can reflect the agent's attempt to stay close to or seek comfort from others.
+"""
+def measure_proximity_seeking(G):
+    """
+    Measures proximity seeking behavior in the network by analyzing the strength and frequency of outgoing edges.
+    
+    :param G: A NetworkX graph representing the network.
+    :return: A dictionary with nodes as keys and their proximity seeking scores as values.
+    """
+    proximity_seeking_scores = {}
+    for node in G.nodes:
+        edges = G.out_edges(node, data=True)
+        score = sum(weight for _, _, weight in edges) / len(edges) if edges else 0
+        proximity_seeking_scores[node] = score
+    return proximity_seeking_scores
+
+
+"""
+Safe haven dynamics can be represented by the tendency of agents to connect with specific others in times of distress, 
+which can be reflected by the strengthening of edges under certain conditions 
+(e.g., increased interaction frequency or intensity during simulated stress events).
+"""
+
+def measure_safe_haven(G, stress_events):
+    """
+    Measures safe haven behavior by analyzing changes in edge strengths during stress events.
+    
+    :param G: A NetworkX graph representing the network.
+    :param stress_events: A list of tuples representing stress events (node, stress level).
+    :return: A dictionary with node pairs as keys and changes in edge strength as values.
+    """
+    safe_haven_changes = {}
+    for node, stress_level in stress_events:
+        neighbors = G.neighbors(node)
+        for neighbor in neighbors:
+            # Assuming edge attribute 'stress_response' captures change in interaction
+            edge_data = G.get_edge_data(node, neighbor)
+            response = edge_data.get('stress_response', 0)
+            safe_haven_changes[(node, neighbor)] = response
+    return safe_haven_changes
+
+"""
+Secure base behavior can be assessed by the extent to which agents facilitate exploration or supportiveness for others. 
+This could be reflected in the network by outgoing edges from an agent that increase in strength or number as the agent supports 
+others' exploration or development.
+"""
+
+def measure_secure_base(G):
+    """
+    Measures secure base behavior by analyzing supportive interactions that facilitate exploration.
+    
+    :param G: A NetworkX graph.
+    :return: A dictionary with nodes as keys and their secure base scores as values.
+    """
+    secure_base_scores = {}
+    for node in G.nodes:
+        supportive_edges = G.out_edges(node, data=True)
+        score = sum(data['supportiveness'] for _, _, data in supportive_edges) / len(supportive_edges) if supportive_edges else 0
+        secure_base_scores[node] = score
+    return secure_base_scores
+
+
+# Analysis using formal attachment data
+
+"""
+To study the evolution of attachment behaviors over time, especially in response to simulated life challenges or stressors, 
+you can analyze how the measures of proximity seeking, safe haven, and secure base change across different network snapshots, 
+which correspond to different time points or conditions.
+"""
+def temporal_analysis_of_attachment_behaviors(network_snapshots, behavior_measure_functions):
+    """
+    Tracks the evolution of attachment behaviors over time using network snapshots.
+    
+    :param network_snapshots: A list of network snapshots (NetworkX graphs) over time.
+    :param behavior_measure_functions: A dict of functions to measure specific attachment behaviors.
+    """
+    behavior_trends = {key: [] for key in behavior_measure_functions.keys()}
+    
+    for snapshot in network_snapshots:
+        for behavior, function in behavior_measure_functions.items():
+            measure = function(snapshot)
+            behavior_trends[behavior].append(np.mean(list(measure.values())))
+    
+    # Plotting the trend of each attachment behavior over time
+    for behavior, trends in behavior_trends.items():
+        plt.plot(trends, label=behavior)
+    plt.xlabel('Time (snapshot index)')
+    plt.ylabel('Behavior Measure')
+    plt.legend()
+    plt.show()
+
+
+
+"""
+For classifying agents into attachment styles based on their behavior patterns, 
+clustering algorithms can be applied to the measured scores for proximity seeking, safe haven, and secure base behaviors.
+"""
+def classify_attachment_styles(behavior_measures):
+    """
+    Classifies agents into attachment styles based on clustering of behavior measures.
+    
+    :param behavior_measures: A dict where keys are behavior names and values are dicts of measures per agent.
+    """
+    # Assuming each agent has a measure for each behavior, compile a feature matrix
+    features = np.array([list(measures.values()) for measures in behavior_measures.values()]).T
+    
+    # KMeans clustering to classify agents into styles (e.g., 3 clusters for secure, anxious, avoidant)
+    kmeans = KMeans(n_clusters=3)
+    labels = kmeans.fit_predict(features)
+    
+    # Map cluster labels to attachment styles (this mapping might require interpretation)
+    attachment_styles = {0: 'Secure', 1: 'Anxious', 2: 'Avoidant'}
+    classified_styles = [attachment_styles[label] for label in labels]
+    
+    return classified_styles
+
+
+"""
+To explore reciprocal attachment behaviors among pairs or groups of agents, 
+you can calculate mutual information or other correlation measures between agents' behavior measures.
+"""
+
+def analyze_interactive_dynamics(behavior_measures):
+    """
+    Analyzes reciprocal attachment behaviors among agents using mutual information.
+    
+    :param behavior_measures: A dict of behavior measures for each agent.
+    """
+    # Example: Calculate mutual information between pairs of agents for a specific behavior
+    # This example assumes a simple pairwise comparison; extend as needed for group dynamics
+    agents = list(behavior_measures.keys())
+    mi_scores = {}
+    for i, agent1 in enumerate(agents):
+        for agent2 in agents[i+1:]:
+            score = mutual_info_score(behavior_measures[agent1], behavior_measures[agent2])
+            mi_scores[(agent1, agent2)] = score
+    return mi_scores
+
+
+"""
+To validate the model using external assessments of attachment behaviors, 
+you could correlate network-based measures with externally provided attachment scores or classifications.
+"""
+
+def external_validation(behavior_measures, external_scores):
+    """
+    Validates network-based measures against external assessments of attachment behaviors.
+    
+    :param behavior_measures: A dict of network-based behavior measures for each agent.
+    :param external_scores: A dict of external assessment scores for each agent.
+    """
+    # Example: Correlate network-based measures with external scores for proximity seeking
+    network_scores = np.array(list(behavior_measures['proximity_seeking'].values()))
+    external_values = np.array([external_scores[agent] for agent in behavior_measures['proximity_seeking'].keys()])
+    
+    correlation, _ = pearsonr(network_scores, external_values)
+    print(f"Correlation between network-based measures and external assessments: {correlation}")
 
 
 """
