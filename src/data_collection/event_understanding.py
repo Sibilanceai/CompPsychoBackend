@@ -9,6 +9,7 @@ import transformers
 import openai
 import os
 import json
+import re
 import numpy as np
 print(transformers.__version__)
 
@@ -38,7 +39,7 @@ class EventRepresentation:
         }
 
 
-def extract_event_representation(text_chunk):
+def extract_event_representation(text_chunk, temporal_category, hiearchical_level):
     '''
     prompt = f"""
     Given the narrative text: "{text_chunk}"
@@ -48,52 +49,84 @@ def extract_event_representation(text_chunk):
     """
     '''
 
-    # prompt = f"""
-    # Given the narrative text: \"{text_chunk}\"
-    # Identify the main event, including Subject, Action, Object, and Environment. 
-    # Classify the Action into its temporal category (Short-term, Medium-term, Long-term) 
-    # and hierarchical level (High-level, Context-specific, Task-specific).
-    # """
     model = initialize_openai_model()
+    temporal_category = str(temporal_category).lower()
+    hiearchical_level = str(hiearchical_level).lower()
+
+    # NOTE: human message prompts are the same for each temporal category
+    if temporal_category == "medium" and hiearchical_level == "high":
+        # Define the narrative text as a human message
+        # Medium Term, High Level
+        human_message_med_High = HumanMessagePromptTemplate.from_template(f"Within the narrative text: \"{text_chunk}\", identify and describe the sequence of events, focusing on actions that align with the Extended Dynamic Cognitive Vector Theory (EDCVT). EDCVT posits that actions and behaviors can be classified into hierarchical levels: High-level (overarching themes or goals), Context-specific (influenced by situational factors), and Task-specific (directed toward immediate tasks). Additionally, actions are influenced by temporal dynamics: Short-term (immediate decisions), Medium-term (days to months), and Long-term (lifelong trends). For this medium-term (days to months) temporal category and High-level (overarching themes or goals) focused analysis, identify the Subject, Action, Object, and Environment for key actions and that can be classified as High-level, indicative of overarching themes driving the narrative.")
+        
+        # Define the system's task in response to the human message
+        system_message_med_High = SystemMessagePromptTemplate.from_template(f"Using the narrative text: \"{text_chunk}\", extract and construct a sequence of event descriptions based on the Extended Dynamic Cognitive Vector Theory (EDCVT), which categorizes cognitive behaviors into hierarchical levels and temporal dynamics. In this task, focus on High-level vectors within a Medium-term temporal category. High-level vectors represent overarching themes or goals that guide behavior over days to months. Format each event as a meaningful sentence, include by each sentence event description a tuple of the (Subject, Action, Objects, Environment) of the event description, emphasizing the influence of overarching goals or themes on the actions within the medium-term scope of the narrative.")
+
+        # Combine into a chat prompt template if needed
+        chat_prompt_med_High = ChatPromptTemplate(messages=[human_message_med_High, system_message_med_High])
+        llmchain = LLMChain(llm=model, prompt=chat_prompt_med_High)
+        response = llmchain.invoke({}, Temperature=1)
+        return response, parse_response(response["text"])
     
-    # prompt = SystemMessagePromptTemplate.from_template(prompt)
+    elif temporal_category == "medium" and hiearchical_level == "context":
+        # Define the narrative text as a human message
+        # Medium Term, High Level
+        human_message_med_Context = HumanMessagePromptTemplate.from_template(f"Within the narrative text: \"{text_chunk}\", identify and describe the sequence of events, focusing on actions that align with the Extended Dynamic Cognitive Vector Theory (EDCVT). EDCVT posits that actions and behaviors can be classified into hierarchical levels: High-level (overarching themes or goals), Context-specific (influenced by situational factors), and Task-specific (directed toward immediate tasks). Additionally, actions are influenced by temporal dynamics: Short-term (immediate decisions), Medium-term (days to months), and Long-term (lifelong trends). For this medium-term (days to months) and Context-specific (influenced by situational factors) focused analysis, identify the Subject, Action, Object, and Environment for key actions and that can be classified as High-level, indicative of overarching themes driving the narrative.")
 
-    # Define the narrative text as a human message
-    human_message = HumanMessagePromptTemplate.from_template(f"The narrative text is: \"{text_chunk}\". What is the main event, including Subject, Action, Object, and Environment?")
+        # Define the system's task in response to the human message
+        system_message_med_Context = SystemMessagePromptTemplate.from_template(f"Analyze \"{text_chunk}\" to identify and sequence events according to the Extended Dynamic Cognitive Vector Theory (EDCVT), focusing specifically on Context-specific vectors within the Medium-term temporal category. Context-specific vectors account for behaviors influenced by situational factors over days to months. Format each event as a meaningful sentence, include by each sentence event description a tuple of the (Subject, Action, Objects, Environment) of the event description, highlighting how situational factors shape the narrative's progression. Ensure each event captures the essence of Context-specific actions within the medium-term framework of the story.")
 
-    # Define the system's task in response to the human message
-    system_message = SystemMessagePromptTemplate.from_template(f"Given the narrative text: \"{text_chunk}\" Identify the main event, including Subject, Action, Object, and Environment. Classify the Action into its temporal category (Short-term, Medium-term, Long-term) and hierarchical level (High-level, Context-specific, Task-specific).")
+        # Combine into a chat prompt template if needed
+        chat_prompt_med_Context = ChatPromptTemplate(messages=[human_message_med_Context, system_message_med_Context])
+        llmchain = LLMChain(llm=model, prompt=chat_prompt_med_Context)
+        response = llmchain.invoke({}, Temperature=1)
+        return response, parse_response(response["text"])
+    
+    elif temporal_category == "medium" and hiearchical_level == "task":
+        # Define the narrative text as a human message
+        # Medium Term, Task Level
+        human_message_med_Task = HumanMessagePromptTemplate.from_template(f"Within the narrative text: \"{text_chunk}\", identify and describe the sequence of events, focusing on actions that align with the Extended Dynamic Cognitive Vector Theory (EDCVT). EDCVT posits that actions and behaviors can be classified into hierarchical levels: High-level (overarching themes or goals), Context-specific (influenced by situational factors), and Task-specific (directed toward immediate tasks). Additionally, actions are influenced by temporal dynamics: Short-term (immediate decisions), Medium-term (days to months), and Long-term (lifelong trends). For this medium-term (days to months) and Task-specific (directed toward immediate tasks) focused analysis, identify the Subject, Action, Object, and Environment for key actions and that can be classified as High-level, indicative of overarching themes driving the narrative.")
 
-    # Combine into a chat prompt template if needed
-    chat_prompt = ChatPromptTemplate(messages=[human_message, system_message])
+        # Define the system's task in response to the human message
+        system_message_med_Task = SystemMessagePromptTemplate.from_template(f"Examine the narrative text: \"{text_chunk}\", and generate a sequence of event descriptions following the Extended Dynamic Cognitive Vector Theory (EDCVT), concentrating on Task-specific vectors within a Medium-term temporal framework. Task-specific vectors detail behaviors aimed at immediate tasks or challenges occurring over days to months. Format each event as a meaningful sentence, include by each sentence event description a tuple of the (Subject, Action, Objects, Environment) of the event description, showcasing how specific tasks or challenges are addressed and influenced by the narrative’s medium-term dynamics. The focus should be on the immediate objectives guiding the characters’ actions.")
 
-    # Use this chat_prompt in your model invocation logic
+        # Combine into a chat prompt template if needed
+        chat_prompt_med_Context = ChatPromptTemplate(messages=[human_message_med_Task, system_message_med_Task])
+        llmchain = LLMChain(llm=model, prompt=chat_prompt_med_Context)
+        response = llmchain.invoke({}, Temperature=1)
+        return response, parse_response(response["text"])
+    
+    # TODO do the other temporal categories and hiearchical levels
 
-    # prompt = CustomPromptTemplate(text_chunk)
-    llmchain = LLMChain(llm=model, prompt=chat_prompt)
-    response = llmchain.invoke({}, Temperature=0.9)
-    return response, parse_response(response)
+    print("ERROR: Invalid temporal category and or hiearchical level")
+    return None
 
 
 
 # Improved parsing logic (Example)
-def parse_response(response_text):
-    # This example assumes the LLM outputs JSON-like text; adjust according to actual output format
-    return None
-    try:
-        event_data = json.loads(response_text)
-        return EventRepresentation(
-            subject=event_data["subject"],
-            action=event_data["action"],
-            obj=event_data["object"],
-            environment=event_data["environment"],
-            temporal_category=event_data["temporal_category"],
-            hierarchical_level=event_data["hierarchical_level"],
-        )
-    except json.JSONDecodeError:
-        print("Failed to decode LLM response:", response_text)
-        # Handle error or fallback
-        return None
+def parse_response(single_chunk_text):
+    # Split the chunk by new lines and filter out empty lines
+    lines = [line.strip() for line in single_chunk_text.split('\n') if line.strip()]
+
+    event_sentences = []
+    event_tuples = []
+
+    # Regular expression to match the tuple format
+    tuple_regex = r"\(([^)]+)\)"
+    
+    for line in lines:
+        # Check if the line contains an event tuple and description
+        match = re.search(tuple_regex, line)
+        if match:
+            # Extract the tuple
+            event_tuple = tuple(match.group(1).split(', '))
+            event_tuples.append(event_tuple)
+
+            # Extract the description, which follows the tuple
+            description = re.sub(tuple_regex, '', line).strip()
+            event_sentences.append(description)
+
+    return event_sentences, event_tuples
 
 
 
@@ -108,6 +141,20 @@ def text_into_chunks(story):
     print("chunk length ", len(chunks))
     return chunks
 
+def refine_chunks(chunks):
+    refined_chunks = []
+    for chunk in chunks:
+        # Example criterion: split further based on sentence count if too long
+        sentences = chunk.split('.')
+        if len(sentences) > 10:  # Arbitrary threshold for demonstration
+            midpoint = len(sentences) // 2
+            refined_chunks.append('.'.join(sentences[:midpoint]))
+            refined_chunks.append('.'.join(sentences[midpoint:]))
+        else:
+            refined_chunks.append(chunk)
+    return refined_chunks
+
+
 
 """
 Step 1: Enhance Narrative Chunk Embedding Generation
@@ -118,6 +165,8 @@ You've started with HuggingFaceEmbeddings for semantic chunking; next, generate 
 # Assuming additional embedding functions are defined elsewhere
 def generate_additional_embeddings(chunk):
     # Placeholder for generating sentiment, thematic, etc., embeddings
+    sentiment_embedding = generate_sentiment_embedding(chunk)
+    thematic_embedding = generate_thematic_embedding(chunk)
     return sentiment_embedding, thematic_embedding
 
 # Assuming an external function or system for sentiment and thematic embedding generation
@@ -165,6 +214,7 @@ def extract_event_representation_with_context(text_chunk, context):
     Identify the main event, including Subject, Action, Object, and Environment...
     """
     # Call to LLM with the modified prompt
+    # TODO finish, use without context implementation and add retrieved context
     response = openai.Completion.create(engine="text-davinci-003", prompt=prompt, max_tokens=200, temperature=0.5)
     return parse_response(response.choices[0].text)
 
@@ -254,6 +304,11 @@ print(chunks)
 
 
 for chunk in chunks:
-    events, eventenc = extract_event_representation(chunk)
+    events, eventenc = extract_event_representation(chunk, "medium", "context")
+    print(len(events), events)
+    print(eventenc)
+    
+for chunk in chunks:
+    events, eventenc = extract_event_representation(chunk, "medium", "high")
     print(len(events), events)
     print(eventenc)
