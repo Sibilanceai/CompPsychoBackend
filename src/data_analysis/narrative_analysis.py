@@ -1,14 +1,3 @@
-from sklearn.cluster import KMeans
-import numpy as np
-
-
-
-
-# Example feature vectors for characters or narratives
-features = np.array([
-    matrix.flatten() for matrix in all_matrices  # Replace `all_matrices` with your matrices
-])
-
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
