@@ -50,7 +50,7 @@ We welcome contributions from the community. Please read our CONTRIBUTING.md for
 
 # License
 
-This project is licensed under [LICENSE NAME] - see the LICENSE file for details.
+This project is licensed under PolyForm Noncommercial License 1.0.0 - see the LICENSE file for details.
 
 # Citation
 
