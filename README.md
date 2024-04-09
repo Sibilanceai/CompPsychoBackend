@@ -37,7 +37,8 @@ This framework has a wide range of applications in psychological research and pr
 ## Repository Structure
 
 /src: Source code for data collection, annotation, and analysis.
-/docs: Detailed documentation and methodology.
+/data: Contains data used for experimentation and testing
+/docs: Detailed documentation and methodology, instructions of use. 
 /examples: Example datasets and case studies.
 CONTRIBUTING.md: Guidelines for contributing to this project.
 Getting Started
