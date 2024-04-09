@@ -45,6 +45,16 @@ class ProtoNet(nn.Module):
         transformed_prototypes = torch.stack([self.transform(proto.unsqueeze(0)).squeeze(0) for proto in prototypes])
         
         # Calculate Euclidean distance between the transformed x and the transformed prototypes
+        # print("transformed_x shape:", transformed_x.shape)
+        # print("transformed_prototypes shape:", transformed_prototypes.shape)
+        # Ensure transformed_x is two-dimensional [batch_size, feature_size]
+        transformed_x = transformed_x.squeeze(1)  # Remove the unnecessary middle dimension
+
+        # Ensure transformed_prototypes is also two-dimensional
+        transformed_prototypes = transformed_prototypes.squeeze(1)  # Same operation
+        # print("transformed_x shape:", transformed_x.shape)
+        # print("transformed_prototypes shape:", transformed_prototypes.shape)
+
         dists = torch.cdist(transformed_x, transformed_prototypes)
         return dists
 
@@ -156,7 +166,7 @@ def train_proto_net(proto_net, optimizer, query_samples, query_labels, prototype
     dists = proto_net(query_samples, prototype_tensor).squeeze(-1)  # Adjust based on the actual extra dimension
 
     # This step assumes dists is [num_classes, batch_size] and needs to be transposed
-    dists = dists.transpose(0, 1)
+    # dists = dists.transpose(0, 1)
     # Compute the loss: Negative distance because we're using the CrossEntropy loss,
     # which expects logits (higher values for more likely classes). Since distance implies
     # the opposite (lower is better), we negate the distances.
@@ -385,12 +395,22 @@ def classify_new_events(new_events, proto_net_BC, proto_net_PS, prototype_tensor
 
 def test(): 
     # Adjust this function to create event sentences and classify them using the updated `classify_new_events`
-    new_events = ['Event sentence 1', 'Event sentence 2', 'Event sentence 3']
+    new_events = ['Bob flies to the airport to pick up his brother.', 'Bob picks up his brother.', 'Bob and his brother drives back home.']
     predicted_labels_BC, predicted_labels_PS = classify_new_events(new_events, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
     print("Predicted labels for BC:", predicted_labels_BC)
     print("Predicted labels for PS:", predicted_labels_PS)
 
+"""
+Predicted Labels Key:
+For BC:
+0: Blast (B)
+1: Consume (C)
 
+For PS:
+0: Play (P)
+1: Sleep (S)
+"""
+# test()
 
 
 

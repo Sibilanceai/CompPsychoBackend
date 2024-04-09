@@ -8,6 +8,7 @@ from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, H
 import transformers
 import openai
 import os
+import csv
 import json
 import re
 import numpy as np
@@ -15,7 +16,7 @@ print(transformers.__version__)
 
 def initialize_openai_model():
     openai_api_key = os.getenv("OPENAI_API_KEY")
-    # openai_api_key = 
+    # openai_api_key = ""
     return OpenAI(model_name="gpt-3.5-turbo-instruct", openai_api_key=openai_api_key)
 
 
@@ -66,7 +67,8 @@ def extract_event_representation(text_chunk, temporal_category, hiearchical_leve
         chat_prompt_med_High = ChatPromptTemplate(messages=[human_message_med_High, system_message_med_High])
         llmchain = LLMChain(llm=model, prompt=chat_prompt_med_High)
         response = llmchain.invoke({}, Temperature=1)
-        return response, parse_response(response["text"])
+        events, eventtups = parse_response(response["text"])
+        return response, events, eventtups
     
     elif temporal_category == "medium" and hiearchical_level == "context":
         # Define the narrative text as a human message
@@ -80,7 +82,8 @@ def extract_event_representation(text_chunk, temporal_category, hiearchical_leve
         chat_prompt_med_Context = ChatPromptTemplate(messages=[human_message_med_Context, system_message_med_Context])
         llmchain = LLMChain(llm=model, prompt=chat_prompt_med_Context)
         response = llmchain.invoke({}, Temperature=1)
-        return response, parse_response(response["text"])
+        events, eventtups = parse_response(response["text"])
+        return response, events, eventtups
     
     elif temporal_category == "medium" and hiearchical_level == "task":
         # Define the narrative text as a human message
@@ -94,7 +97,8 @@ def extract_event_representation(text_chunk, temporal_category, hiearchical_leve
         chat_prompt_med_Context = ChatPromptTemplate(messages=[human_message_med_Task, system_message_med_Task])
         llmchain = LLMChain(llm=model, prompt=chat_prompt_med_Context)
         response = llmchain.invoke({}, Temperature=1)
-        return response, parse_response(response["text"])
+        events, eventtups = parse_response(response["text"])
+        return response, events, eventtups
     
     # TODO do the other temporal categories and hiearchical levels
 
@@ -103,7 +107,7 @@ def extract_event_representation(text_chunk, temporal_category, hiearchical_leve
 
 
 
-# Improved parsing logic (Example)
+# extracts events with numerical relative positional value within a chunk that may be useful
 def parse_response(single_chunk_text):
     # Split the chunk by new lines and filter out empty lines
     lines = [line.strip() for line in single_chunk_text.split('\n') if line.strip()]
@@ -128,7 +132,41 @@ def parse_response(single_chunk_text):
 
     return event_sentences, event_tuples
 
+# extracts events without numerical prefix that may just add noise
+#def parse_response(single_chunk_text):
+    # Initialize lists for storing event sentences and tuples
+    event_sentences = []
+    event_tuples = []
 
+    # Debug: Print the received input to ensure it's as expected
+    print("Received text:", single_chunk_text[:100])  # Print first 100 chars for a quick check
+
+    # Split the input text into lines
+    lines = single_chunk_text.strip().split('\n')
+
+    # Pattern to identify and remove the numerical prefix from sentences
+    numerical_prefix_pattern = re.compile(r'^Event\s+\d+:\s+')
+
+    for line in lines:
+        # Debug: Print each line to see if splitting works as expected
+        print("Processing line:", line)
+
+        # Attempt to find the tuple within parentheses
+        tuple_match = re.search(r'\((.*?)\)', line)
+        if tuple_match:
+            # Extract and process the tuple string
+            tuple_str = tuple_match.group(1)
+            event_tuple = tuple(tuple_str.split('; '))
+            event_tuples.append(event_tuple)
+
+            # Remove the tuple from the line to isolate the description
+            description_with_numerical_prefix = re.sub(r'\(.*?\)', '', line).strip()
+
+            # Remove the numerical prefix from the description
+            description = numerical_prefix_pattern.sub('', description_with_numerical_prefix).strip()
+            event_sentences.append(description)
+
+    return event_sentences, event_tuples
 
 def text_into_chunks(story): 
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -301,14 +339,39 @@ The boy, driven by an inexplicable pull, opened the book to find not words, but 
 chunks = text_into_chunks(story=story)
 print(chunks)
 
+def save_events_to_csv(event_sentences, event_tuples, filename_prefix):
+    # Save event sentences
+    with open(f'{filename_prefix}_sentences.csv', 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        for sentence in event_sentences:
+            writer.writerow([sentence])
 
+    # Save event tuples
+    with open(f'{filename_prefix}_tuples.csv', 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        for event_tuple in event_tuples:
+            writer.writerow(event_tuple)
 
+eventsentlist_med_context = []
+eventsentlist_med_high = []
+eventenclist_med_context = []
+eventenclist_med_high = []
 for chunk in chunks:
-    events, eventenc = extract_event_representation(chunk, "medium", "context")
+    eventsbundle, events, eventtups = extract_event_representation(chunk, "medium", "context")
+    eventsentlist_med_context.extend(events)
+    eventenclist_med_context.extend(eventtups)
     print(len(events), events)
-    print(eventenc)
+    print(eventtups)
+
+# Save medium-context events and encodings to CSV
+save_events_to_csv(eventsentlist_med_context, eventenclist_med_context, "med_context")
     
 for chunk in chunks:
-    events, eventenc = extract_event_representation(chunk, "medium", "high")
+    eventsbundle, events, eventtups = extract_event_representation(chunk, "medium", "high")
+    eventsentlist_med_high.extend(events)
+    eventenclist_med_high.extend(eventtups)
     print(len(events), events)
-    print(eventenc)
+    print(eventtups)
+
+# Save medium-high events and encodings to CSV
+save_events_to_csv(eventsentlist_med_high, eventenclist_med_high, "med_high")
