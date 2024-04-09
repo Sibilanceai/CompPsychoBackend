@@ -55,4 +55,14 @@ This project is licensed under PolyForm Noncommercial License 1.0.0 - see the LI
 # Citation
 
 If you use this framework in your research, please cite it as follows:
-[Your preferred citation format]
+APA (American Psychological Association)
+Senthil, A. (2024). CompPsychoToolBox. [Software]. GitHub. URL of the repository
+
+MLA (Modern Language Association)
+Senthil, Ajith. CompPsychoToolBox. 2024, URL of the repository.
+
+Chicago
+Senthil, Ajith. 2024. CompPsychoToolBox. GitHub repository. URL of the repository.
+
+IEEE
+A. Senthil, "CompPsychoToolBox," GitHub, 2024. [Online]. Available: URL of the repository.
