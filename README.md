@@ -1,6 +1,9 @@
 # Computational-Psychodynamics-ToolBox
 Observation-Based psychometrics for human behavior research taking an ecological perspective on personality
 
+Read more from the book chapter written on it linked here: https://docs.google.com/document/d/1tTwY2wWmlTAHcGy07YjWPE2EKPEZYsH-JGJMcBgE0QA/edit?usp=sharing
+
+
 ## Computational Psychodynamics: Hierarchical Behavioral Schema
 
 ## Overview
