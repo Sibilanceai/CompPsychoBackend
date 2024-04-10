@@ -40,38 +40,23 @@ cog_vectors = {'BP': 0, 'CP': 1, 'BS': 0, 'CS': 1}
 
 
 # Initialize a dictionary to hold the transition matrices for each character
-# Initialize the matrices for each category
-transition_matrices = {
-    'high-level': {
-        'short-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'medium-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'long-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-    },
-    'context-specific': {
-        'short-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'medium-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'long-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-    },
-    'task-specific': {
-        'short-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'medium-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-        'long-term': np.zeros((NUM_COG_VECTORS, NUM_COG_VECTORS)),
-    }
-}
 
 # Assume you have a way to get the subject of the event, placeholder here
 def get_subject_from_event(event_tups):
     # Placeholder: replace with actual logic to extract subject
     return 'Bob'
 
-def initialize_character_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
+def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
     matrices = {}
     for character in characters:
-        matrices[character] = {}
+        character_matrices = {}
         for hierarchy in hierarchy_levels:
-            matrices[character][hierarchy] = {}
+            hierarchy_matrices = {}
             for temporality in temporality_levels:
-                matrices[character][hierarchy][temporality] = np.zeros((num_vectors, num_vectors))
+                # Initialize a zero matrix for each combination of hierarchy and temporality
+                hierarchy_matrices[temporality] = np.zeros((num_vectors, num_vectors))
+            character_matrices[hierarchy] = hierarchy_matrices
+        matrices[character] = character_matrices
     return matrices
 
 def normalize_matrices(transition_matrices):
@@ -97,8 +82,8 @@ hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
 temporality_levels = ['short-term', 'medium-term', 'long-term']
 
 
-transition_matrices = initialize_character_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
-
+transition_matrices = initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
+print(transition_matrices['Bob']['context-specific']['medium-term'])
 # After updating transition matrices with new event data
 normalize_matrices(transition_matrices)
 
@@ -118,7 +103,7 @@ bc_ps_to_state = {
 
 # Initialize your transition matrices dictionary for each character as before
 
-# Example function to combine BC and PS predictions into overall state
+# Function to combine BC and PS predictions into overall state
 def combine_predictions(predicted_labels_BC, predicted_labels_PS):
     combined_states = [bc_ps_to_state[(bc, ps)] for bc, ps in zip(predicted_labels_BC_med_context_sent, predicted_labels_PS_med_context_sent)]
     return combined_states
@@ -150,25 +135,25 @@ save_transition_matrices(transition_matrices, 'transition_matrices.npy')  # Save
 # Print out the matrices to check them
 for char in characters:
     print(f"Transition matrices for {char}:")
-    print(transition_matrices[char]['context-specific']['medium-term']['BC'])
-    print(transition_matrices[char]['context-specific']['medium-term']['PS'])
+    print(transition_matrices[char]['context-specific']['medium-term']['BP'])
+    print(transition_matrices[char]['context-specific']['medium-term']['CS'])
 
 # Save the transition matrices if needed
-np.save('bob_bc_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term']['BC'])
-np.save('bob_ps_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term']['PS'])
+np.save('bob_bc_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term']['BP'])
+np.save('bob_ps_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term']['CS'])
 
 # ... Additional code for loading and using the matrices
 
 
-# Example function to map events to hierarchical/temporal indices and cognitive vectors
+# hierarchical/temporal indices and cognitive vectors
 def map_event_to_indices(event):
-    # Implement your logic here
+    # Might not need
     return None
     return temporal_index, hierarchical_index, prev_vector, next_vector
 
 def categorize_event_with_langchain(event_description):
     # Interaction with LangChain to categorize the event
-    # This is pseudo-code; you'll need to replace it with your actual LangChain interaction code
+    # This is pseudo-code; need to replace it with actual LangChain interaction code
     category = "BS"  # Placeholder for the actual category determined by LangChain
     return category
 
