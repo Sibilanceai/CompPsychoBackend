@@ -33,18 +33,42 @@ med_context_tuples = [item for sublist in med_context_tuples for item in sublist
 predicted_labels_BC_med_context_sent, predicted_labels_PS_med_context_sent = classify_new_events(med_context_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
 predicted_labels_BC_med_context_tup, predicted_labels_PS_med_context_tup = classify_new_events(med_context_tuples, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
 
+
+# TODO need to make functions to make these 
 # Define the size of the matrices
 NUM_COG_VECTORS = 4  # This should be the number of cognitive vector categories you have
 # Cognitive vectors mapping
 cog_vectors = {'BP': 0, 'BS': 1, 'CP': 2, 'CS': 3}
 
+characters = ['Kate', 'Jack', 'John', 'Sawyer']
+hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
+temporality_levels = ['short-term', 'medium-term', 'long-term']
 
-# Initialize a dictionary to hold the transition matrices for each character
+# Mapping from BC and PS classification indices to overall states
+bc_ps_to_state = {
+    (0, 0): 'BP',  # (Blast, Play)
+    (0, 1): 'BS',  # (Blast, Sleep)
+    (1, 0): 'CP',  # (Consume, Play)
+    (1, 1): 'CS',  # (Consume, Sleep)
+}
+
+# Initialize your transition matrices dictionary for each character as before
+"""
+Predicted Labels Key:
+For BC:
+0: Blast (B)
+1: Consume (C)
+
+For PS:
+0: Play (P)
+1: Sleep (S)
+"""
+# Initialization and normalize Transition matrices methods
 
 # Assume you have a way to get the subject of the event, placeholder here
 def get_subject_from_event(event_tups):
     # Placeholder: replace with actual logic to extract subject
-    return 'Bob'
+    return 'Kate'
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
     matrices = {}
@@ -77,101 +101,6 @@ def save_transition_matrices(matrices, filepath):
 def load_transition_matrices(filepath):
     with open(filepath, 'rb') as f:
         return np.load(f, allow_pickle=True).item()
-
-
-
-characters = ['Bob', 'Jack', 'John', 'Sawyer']
-hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
-temporality_levels = ['short-term', 'medium-term', 'long-term']
-
-
-transition_matrices = initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
-print(transition_matrices)
-# After updating transition matrices with new event data
-normalize_matrices(transition_matrices)
-
-# Saving the matrices to a file for persistence
-save_transition_matrices(transition_matrices, 'transition_matrices.npy')
-
-# At a later point, to load the matrices
-transition_matrices = load_transition_matrices('transition_matrices.npy')
-
-# Mapping from BC and PS classification indices to overall states
-bc_ps_to_state = {
-    (0, 0): 'BP',  # (Blast, Play)
-    (0, 1): 'BS',  # (Blast, Sleep)
-    (1, 0): 'CP',  # (Consume, Play)
-    (1, 1): 'CS',  # (Consume, Sleep)
-}
-
-# Initialize your transition matrices dictionary for each character as before
-"""
-Predicted Labels Key:
-For BC:
-0: Blast (B)
-1: Consume (C)
-
-For PS:
-0: Play (P)
-1: Sleep (S)
-"""
-# Function to combine BC and PS predictions into overall state
-def combine_predictions(predicted_labels_BC, predicted_labels_PS):
-    combined_states = []
-    for bc, ps in zip(predicted_labels_BC, predicted_labels_PS):
-        if bc == 0 and ps == 0:
-            combined_states.append('BP')
-        elif bc == 0 and ps == 1:
-            combined_states.append('BS')
-        elif bc == 1 and ps == 0:
-            combined_states.append('CP')
-        else:  # bc == 1 and ps == 1
-            combined_states.append('CS')
-    return combined_states
-
-
-
-# Generate combined states for all sentences
-combined_states_all_sentences = combine_predictions(predicted_labels_BC_med_context_sent, predicted_labels_PS_med_context_sent)
-
-# Iterate over sentences, except the last since we're looking at transitions
-for i, sentence in enumerate(med_context_sentences[:-1]):
-    subject = get_subject_from_event(sentence)  # Extract subject from the sentence
-    
-    # Ensure we have the next state to form a transition
-    if i < len(combined_states_all_sentences) - 1:
-        prev_state = combined_states_all_sentences[i]
-        next_state = combined_states_all_sentences[i + 1]
-
-        # Convert states to matrix indices
-        prev_vector = cog_vectors[prev_state]
-        next_vector = cog_vectors[next_state]
-
-        # Update matrices for all hierarchical levels and temporal categories
-        for hierarchy in hierarchy_levels:
-            for temporality in temporality_levels:
-                transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
-
-# After updating the matrices, normalize them and save for persistence
-normalize_matrices(transition_matrices)  # Normalize your matrices as implemented previously
-save_transition_matrices(transition_matrices, 'transition_matrices.npy')  # Save your matrices as implemented previously
-
-bp_index = cog_vectors['BP']  # cog_vectors['BP'] should give you the index for 'BP'
-# Print out the matrices to check them
-for char in characters:
-    print(f"Transition matrices for {char} in 'context-specific' 'medium-term':")
-    print(transition_matrices[char]['context-specific']['medium-term'])
-    print(f"Transition from 'BP' for {char} in 'context-specific' 'medium-term':")
-    bp_transitions = transition_matrices[char]['context-specific']['medium-term'][bp_index]
-    print(bp_transitions)
-
-# Save the transition matrices if needed
-np.save('bob_bc_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term'])
-np.save('bob_ps_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term'])
-
-# ... Additional code for loading and using the matrices
-
-
 # hierarchical/temporal indices and cognitive vectors
 def map_event_to_indices(event):
     # Might not need
@@ -186,17 +115,15 @@ def categorize_event_with_langchain(event_description):
 
 
 # Update transition matrices based on an event
-def update_transition_matrix(event, prev_event, transition_matrices, cog_vectors):
-    if prev_event is None:
-        return  # Skip if there's no previous event to form a transition
-    
-    # Example logic to determine matrix indices based on event categories
-    prev_vector = cog_vectors.get(prev_event)
-    next_vector = cog_vectors.get(event)
-    
+def update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors):
+    # Convert states to matrix indices
+    prev_vector = cog_vectors.get(prev_state)
+    next_vector = cog_vectors.get(next_state)
+
+    # Validate indices
     if prev_vector is not None and next_vector is not None:
-        # Update the matrix; details depend on your specific logic for mapping events to matrices
-        pass
+        # Update the specified matrix
+        transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
 
 
 def find_stationary_distribution(transition_matrix):
@@ -236,6 +163,106 @@ def simulate_behavior(start_state, transition_matrix, num_steps):
         current_state = np.random.choice(a=range(len(transition_matrix)), p=transition_matrix[current_state])
         states.append(current_state)
     return states
+
+
+
+# set up the transition matrices
+
+transition_matrices = initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
+# After updating transition matrices with new event data
+normalize_matrices(transition_matrices)
+
+# Saving the matrices to a file for persistence
+save_transition_matrices(transition_matrices, 'transition_matrices.npy')
+
+# At a later point, to load the matrices
+transition_matrices = load_transition_matrices('transition_matrices.npy')
+
+
+# Function to combine BC and PS predictions into overall state
+def combine_predictions(predicted_labels_BC, predicted_labels_PS):
+    combined_states = []
+    for bc, ps in zip(predicted_labels_BC, predicted_labels_PS):
+        if bc == 0 and ps == 0:
+            combined_states.append('BP')
+        elif bc == 0 and ps == 1:
+            combined_states.append('BS')
+        elif bc == 1 and ps == 0:
+            combined_states.append('CP')
+        else:  # bc == 1 and ps == 1
+            combined_states.append('CS')
+    return combined_states
+
+
+
+# Generate combined states for all sentences, with actual data
+# combined_states_all_sentences = combine_predictions(predicted_labels_BC_med_context_sent, predicted_labels_PS_med_context_sent)
+
+# synthetic data for testing
+import random
+
+def generate_combined_states(num_events, states):
+    """ Generate a random sequence of states for a given number of events. """
+    return [random.choice(states) for _ in range(num_events)]
+
+# Example states and number of events
+states = ['BP', 'BS', 'CP', 'CS']
+num_events = 100  # Number of transitions to simulate
+
+combined_states_all_sentences = generate_combined_states(num_events, states)
+
+
+print("combined_states_all_sentences: ", combined_states_all_sentences)
+# Iterate over sentences, except the last since we're looking at transitions
+for i, sentence in enumerate(med_context_sentences[:-1]):
+    subject = get_subject_from_event(sentence)  # Extract subject from the sentence
+    
+    # Ensure we have the next state to form a transition
+    if i < len(combined_states_all_sentences) - 1:
+        prev_state = combined_states_all_sentences[i]
+        next_state = combined_states_all_sentences[i + 1]
+
+        # Convert states to matrix indices
+        prev_vector = cog_vectors[prev_state]
+        next_vector = cog_vectors[next_state]
+
+        # Update matrices for all hierarchical levels and temporal categories
+        for hierarchy in hierarchy_levels:
+            for temporality in temporality_levels:
+                transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
+
+# After updating the matrices, normalize them and save for persistence
+normalize_matrices(transition_matrices)  # Normalize your matrices as implemented previously
+save_transition_matrices(transition_matrices, 'transition_matrices.npy')  # Save your matrices as implemented previously
+
+bp_index = cog_vectors['BP']  # cog_vectors['BP'] should give you the index for 'BP'
+# Print out the matrices to check them
+for char in characters:
+    print(f"Transition matrices for {char} in 'context-specific' 'medium-term':")
+    print(transition_matrices[char]['context-specific']['medium-term'])
+    print(f"Transition from 'BP' for {char} in 'context-specific' 'medium-term':")
+    bp_transitions = transition_matrices[char]['context-specific']['medium-term'][bp_index]
+    print(bp_transitions)
+
+# Save the transition matrices if needed
+np.save('bob_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term'])
+
+# ... Additional code for loading and using the matrices
+# Example usage for a specific character, hierarchical level, and temporal category
+char = 'Bob'
+hierarchy = 'context-specific'
+temporality = 'medium-term'
+
+# Ensure the matrix is normalized
+normalize_matrices(transition_matrices)  # Assuming this normalizes all matrices
+
+# Get the transition matrix
+transition_matrix = transition_matrices[char][hierarchy][temporality]
+
+# Find the stationary distribution
+stationary_distribution = find_stationary_distribution(transition_matrix)
+print(f"Stationary distribution for {char} in {hierarchy} {temporality}: {stationary_distribution}")
+
 
 
 # from scipy.stats import ttest_ind
