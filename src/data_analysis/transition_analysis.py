@@ -241,7 +241,8 @@ def process_and_update_matrices(events_dict, transition_matrices):
 
         # process sentences
         for i in range(len(combined_states_all_sentences) - 1):
-            subject = get_subject_from_event(data['sentences'][i])  # Ensure subject extraction logic matches data structure
+            subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
+            print(subject)
             prev_state = combined_states_all_sentences[i]
             next_state = combined_states_all_sentences[i + 1]
 
@@ -250,7 +251,7 @@ def process_and_update_matrices(events_dict, transition_matrices):
 
         # Process Tuples in the same manner if needed
         for i in range(len(combined_states_all_tuples) - 1):
-            subject = get_subject_from_event(data['sentences'][i])  # Ensure subject extraction logic matches data structure
+            subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
             prev_state = combined_states_all_tuples[i]
             next_state = combined_states_all_tuples[i + 1]
 
@@ -270,6 +271,7 @@ process_and_update_matrices(event_dict, transition_matrices)
 
 # Normalize and save matrices
 normalize_matrices(transition_matrices)
+print(transition_matrices)
 save_transition_matrices(transition_matrices, 'transition_matrices.npy')
 
 
