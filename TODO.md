@@ -1,5 +1,10 @@
 # TODOs for Backend/Toolbox
 
+1. Finish attachment and Big 5 analysis
+2. Finish data collection
+3. Finish simulation
+
+
 1. Implement Hiearchical levels to the event generation, when we generate an event it should generate it in all 3 levels separately for the same overall event then use the 3 to come up with a way of adding a new cohesive event, all three need to be added to a memory 
 
 2. Implement temporal dynamics, similar approach to the hierarchical levels, we need to when extracting events for the event chains also take into account both the hierarchical levels nad the temproal categories for each. When we simulate as well we need it extracted for each. 
