@@ -12,36 +12,6 @@ from scipy.stats import ttest_ind
 import csv
 
 # Construct the path relative to transition_analysis.py
-
-
-# long_high_sentences_path = '../data_collection/long_high_sentences.csv'
-# long_high_tuples_path = '../data_collection/long_high_tuples.csv'
-
-# med_high_sentences_path = '../data_collection/med_high_sentences.csv'
-# med_high_tuples_path = '../data_collection/med_high_tuples.csv'
-
-# short_high_sentences_path = '../data_collection/short_high_sentences.csv'
-# short_high_tuples_path = '../data_collection/short_high_tuples.csv'
-
-# long_context_sentences_path = '../data_collection/long_context_sentences.csv'
-# long_context_tuples_path = '../data_collection/long_context_tuples.csv'
-
-# med_context_sentences_path = '../data_collection/med_context_sentences.csv'
-# med_context_tuples_path = '../data_collection/med_context_tuples.csv'
-
-# short_context_sentences_path = '../data_collection/short_context_sentences.csv'
-# short_context_tuples_path = '../data_collection/short_context_tuples.csv'
-
-# long_task_sentences_path = '../data_collection/long_task_sentences.csv'
-# long_task_tuples_path = '../data_collection/long_task_tuples.csv'
-
-# med_task_sentences_path = '../data_collection/med_task_sentences.csv'
-# med_task_tuples_path = '../data_collection/med_task_tuples.csv'
-
-# short_task_sentences_path = '../data_collection/short_task_sentences.csv'
-# short_task_tuples_path = '../data_collection/short_task_tuples.csv'
-
-
 def get_file_path(hierarchy, temporality):
     return f'../data_collection/events_{hierarchy.replace(" ", "_")}_{temporality.replace(" ", "_")}.csv'
 
@@ -50,15 +20,6 @@ def read_csv_to_list(file_path):
         reader = csv.reader(f)
         return list(reader)
 
-
-
-
-# # Read the event sentences and tuples
-# med_context_sentences = read_csv_to_list(med_context_sentences_path)
-# med_context_tuples = read_csv_to_list(med_context_tuples_path)
-# # Flatten the list of lists if necessary
-# med_context_sentences = [item for sublist in med_context_sentences for item in sublist]
-# med_context_tuples = [item for sublist in med_context_tuples for item in sublist]
 
 # Function to combine BC and PS predictions into overall state
 def combine_predictions(predicted_labels_BC, predicted_labels_PS):
@@ -85,13 +46,13 @@ def load_and_classify_events():
     # Define paths for each hierarchical and temporal category
     paths = {
         ('high-level', 'long-term'): ('../data_collection/long_high_sentences.csv', '../data_collection/long_high_tuples.csv'),
-        ('high-level', 'medium-term'): ('../data_collection/med_high_sentences.csv', '../data_collection/med_high_tuples.csv'),
+        ('high-level', 'medium-term'): ('../data_collection/medium_high_sentences.csv', '../data_collection/medium_high_tuples.csv'),
         ('high-level', 'short-term'): ('../data_collection/short_high_sentences.csv', '../data_collection/short_high_tuples.csv'),
         ('context-specific', 'long-term'): ('../data_collection/long_context_sentences.csv', '../data_collection/long_context_tuples.csv'),
-        ('context-specific', 'medium-term'): ('../data_collection/med_context_sentences.csv', '../data_collection/med_context_tuples.csv'),
+        ('context-specific', 'medium-term'): ('../data_collection/medium_context_sentences.csv', '../data_collection/medium_context_tuples.csv'),
         ('context-specific', 'short-term'): ('../data_collection/short_context_sentences.csv', '../data_collection/short_context_tuples.csv'),
         ('task-specific', 'long-term'): ('../data_collection/long_task_sentences.csv', '../data_collection/long_task_tuples.csv'),
-        ('task-specific', 'medium-term'): ('../data_collection/med_task_sentences.csv', '../data_collection/med_task_tuples.csv'),
+        ('task-specific', 'medium-term'): ('../data_collection/medium_task_sentences.csv', '../data_collection/medium_task_tuples.csv'),
         ('task-specific', 'short-term'): ('../data_collection/short_task_sentences.csv', '../data_collection/short_task_tuples.csv'),
     }
     
@@ -114,19 +75,46 @@ def load_and_classify_events():
     return events, combined_states_all_sentences, combined_states_all_tuples
 
 
+import re
 
-# Assuming the ProtoNet model is already trained or loaded
-# predicted_labels_BC_med_context_sent, predicted_labels_PS_med_context_sent = classify_new_events(med_context_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
-# predicted_labels_BC_med_context_tup, predicted_labels_PS_med_context_tup = classify_new_events(med_context_tuples, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
+def clean_character_name(name):
+    # Strip unwanted characters and fix common formatting issues
+    name = re.sub(r'[^a-zA-Z\s]', '', name)  # Remove any non-alphabetic and non-space characters
+    name = re.sub(r'\s+', ' ', name)  # Replace multiple spaces with a single space
+    return name.strip().lower()  # Trim spaces and convert to lower case
+
+def load_unique_characters(file_path):
+    characters = set()
+    try:
+        with open(file_path, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                for name in row:
+                    # Split the entry by common delimiters (assuming names might be in a list format)
+                    parts = re.split(r'[,;]\s*', name)
+                    for part in parts:
+                        clean_name = clean_character_name(part)
+                        if clean_name:
+                            characters.add(clean_name)
+    except FileNotFoundError:
+        print(f"Error: The file {file_path} does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    return list(characters)
+
 
 
 # TODO need to make functions to make these 
 # Define the size of the matrices
-NUM_COG_VECTORS = 4  # This should be the number of cognitive vector categories you have
+NUM_COG_VECTORS = 4  # This should be the number of cognitive vector categories behavioral states you have
 # Cognitive vectors mapping
 cog_vectors = {'BP': 0, 'BS': 1, 'CP': 2, 'CS': 3}
 
-characters = ['Kate', 'Jack', 'John', 'Sawyer']
+# Load characters from CSV
+characters = load_unique_characters('../data_collection/characters_list.csv')
+print(f"Loaded characters: {characters}")
+# characters = ['Kate', 'Jack', 'John', 'Sawyer']
 hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
 temporality_levels = ['short-term', 'medium-term', 'long-term']
 
@@ -138,8 +126,19 @@ bc_ps_to_state = {
     (1, 1): 'CS',  # (Consume, Sleep)
 }
 
-def combine_predictions(bc_label, ps_label):
-    return bc_ps_to_state.get((bc_label, ps_label))
+def combine_predictions(predicted_labels_BC, predicted_labels_PS):
+    combined_states = []
+    # Handle the case for single values directly
+    if np.isscalar(predicted_labels_BC) and np.isscalar(predicted_labels_PS):
+        return [bc_ps_to_state.get((predicted_labels_BC, predicted_labels_PS), 'Unknown')]
+
+    # Assuming labels are arrays where each position corresponds to a label for an event
+    for bc_label, ps_label in zip(predicted_labels_BC, predicted_labels_PS):
+        combined_state = bc_ps_to_state.get((bc_label, ps_label), 'Unknown')  # Handle unknown combinations
+        combined_states.append(combined_state)
+    return combined_states
+
+
 
 
 # Initialize your transition matrices dictionary for each character as before
@@ -158,7 +157,8 @@ For PS:
 # Assume you have a way to get the subject of the event, placeholder here
 def get_subject_from_event(event_tups):
     # Placeholder: replace with actual logic to extract subject
-    return 'Kate'
+    characters
+    return characters[0]
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
     matrices = {}
@@ -235,22 +235,24 @@ def simulate_behavior(start_state, transition_matrix, num_steps):
 def process_and_update_matrices(events_dict, transition_matrices):
     for (hierarchy, temporality), data in events_dict.items():
         sentences, tuples = data['sentences'], data['tuples']
-        predicted_labels_BC_sentences, predicted_labels_PS_sentences = data['predicted_labels_BC_sentences'], data['predicted_labels_PS_sentences']
-        predicted_labels_BC_tuples, predicted_labels_PS_tuples = data['predicted_labels_BC_tuples'], data['predicted_labels_PS_tuples']
+        combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
+        combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
 
-        # Process Sentences
-        for i in range(len(sentences) - 1):  # Ensure there is a next state
-            subject = get_subject_from_event(sentences[i])
-            prev_state = combine_predictions(predicted_labels_BC_sentences[i], predicted_labels_PS_sentences[i])
-            next_state = combine_predictions(predicted_labels_BC_sentences[i+1], predicted_labels_PS_sentences[i+1])
+
+        # process sentences
+        for i in range(len(combined_states_all_sentences) - 1):
+            subject = get_subject_from_event(data['sentences'][i])  # Ensure subject extraction logic matches data structure
+            prev_state = combined_states_all_sentences[i]
+            next_state = combined_states_all_sentences[i + 1]
 
             update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+        
 
         # Process Tuples in the same manner if needed
-        for i in range(len(tuples) - 1):
-            subject = get_subject_from_event(tuples[i])
-            prev_state = combine_predictions(predicted_labels_BC_tuples[i], predicted_labels_PS_tuples[i])
-            next_state = combine_predictions(predicted_labels_BC_tuples[i+1], predicted_labels_PS_tuples[i+1])
+        for i in range(len(combined_states_all_tuples) - 1):
+            subject = get_subject_from_event(data['sentences'][i])  # Ensure subject extraction logic matches data structure
+            prev_state = combined_states_all_tuples[i]
+            next_state = combined_states_all_tuples[i + 1]
 
             update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
 
