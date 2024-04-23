@@ -15,11 +15,16 @@ import csv
 med_context_sentences_path = '../data_collection/med_context_sentences.csv'
 med_context_tuples_path = '../data_collection/med_context_tuples.csv'
 
+def get_file_path(hierarchy, temporality):
+    return f'../data_collection/events_{hierarchy.replace(" ", "_")}_{temporality.replace(" ", "_")}.csv'
+
 def read_csv_to_list(file_path):
     with open(file_path, newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
         return list(reader)
-    
+
+
+
 
 # Read the event sentences and tuples
 med_context_sentences = read_csv_to_list(med_context_sentences_path)
@@ -27,6 +32,16 @@ med_context_tuples = read_csv_to_list(med_context_tuples_path)
 # Flatten the list of lists if necessary
 med_context_sentences = [item for sublist in med_context_sentences for item in sublist]
 med_context_tuples = [item for sublist in med_context_tuples for item in sublist]
+
+def load_events(hierarchy_levels, temporality_levels):
+    events = {}
+    for hierarchy in hierarchy_levels:
+        for temporality in temporality_levels:
+            file_path = get_file_path(hierarchy, temporality)
+            unprocessedeventlist = read_csv_to_list(file_path)
+            event_list = [item for sublist in unprocessedeventlist for item in sublist]
+            events[(hierarchy, temporality)] = event_list
+    return events
 
 
 # Assuming the ProtoNet model is already trained or loaded
@@ -124,6 +139,16 @@ def update_transition_matrix(subject, hierarchy, temporality, prev_state, next_s
     if prev_vector is not None and next_vector is not None:
         # Update the specified matrix
         transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
+
+def process_events_for_all_matrices(characters, hierarchy_levels, temporality_levels, events, transition_matrices):
+    for hierarchy, temporality in events:
+        event_list = events[(hierarchy, temporality)]
+        for event in event_list:
+            subject = get_subject_from_event(event)
+            if subject in characters:
+                prev_state, next_state = extract_states_from_event(event)  # Implement this
+                update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+
 
 
 def find_stationary_distribution(transition_matrix):

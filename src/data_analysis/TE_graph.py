@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
-from mTE_graph_calculation import compute_MTE_embedded
+from mTE_graph_calculation import compute_MTE_embedded, silvermans_rule
 
 # Generate synthetic data
 num_agents = 2
@@ -84,7 +84,7 @@ agent_matrices = [np.random.rand(num_timesteps, 3, 3, block_size, block_size) fo
 all_graphs = []  # Store graphs for evolution analysis
 
 # Process and create networks for each timestep
-significant_te_threshold = 0.1e-15  # threshold for significant TE values
+significant_te_threshold = 0.2  # threshold for significant TE values
 
 
 for time in range(num_timesteps):
@@ -95,14 +95,19 @@ for time in range(num_timesteps):
                 for l in range(3):
                     Ax = agent_matrices[0][time][i][j].flatten()
                     Ay = agent_matrices[1][time][k][l].flatten()
-                    te = compute_MTE_embedded(Ax, Ay)
-                    print("te: ", te)
-                    if abs(te) > significant_te_threshold:  # Example threshold
-                        G.add_edge(f'Agent1_Block_{i*3+j+1}', f'Agent2_Block_{k*3+l+1}', weight=te)
+                    te_Ax_to_Ay = compute_MTE_embedded(Ax, Ay)
+                    te_Ay_to_Ax = compute_MTE_embedded(Ay, Ax)
+
+                    if abs(te_Ax_to_Ay) > significant_te_threshold:
+                        G.add_edge(f'Agent1_Block_{i*3+j+1}', f'Agent2_Block_{k*3+l+1}', weight=te_Ax_to_Ay)
+                    if abs(te_Ay_to_Ax) > significant_te_threshold:
+                        G.add_edge(f'Agent2_Block_{k*3+l+1}', f'Agent1_Block_{i*3+j+1}', weight=te_Ay_to_Ax)
+
+              
 
     all_graphs.append(G)  # Store the graph
 
-    if G.number_of_edges() > 0:  # Check if there are any edges
+    if G.number_of_edges() > 0:
         plt.figure(figsize=(12, 12))
         pos = nx.spring_layout(G)
         edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
@@ -110,7 +115,7 @@ for time in range(num_timesteps):
         plt.title(f"Network Graph at Time {time}")
         plt.show()
     else:
-        print(f"No edges to display at time {time}.")  # Handle the case where no edges were added
+        print(f"No edges to display at time {time}.")
 
 # Optionally save all edges data to a DataFrame and CSV if needed for analysis
 all_edges_data = [{

@@ -92,6 +92,7 @@ def create_time_lagged_embeddings(X, lag, dimensions):
     return embedded_data
 
 def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
+    
     # Embedding the data with time lags
     X_embedded = create_time_lagged_embeddings(X, lag, dimensions)
     Y_embedded = create_time_lagged_embeddings(Y, lag, dimensions)
@@ -136,5 +137,33 @@ def update_graph_with_MTE(time_series_data, sigma_values, graph, node_labels):
     for i in range(len(time_series_data)):
         for j in range(len(time_series_data)):
             if i != j:
-                MTE_value = compute_MTE(time_series_data[i], time_series_data[j], sigma_values[i], sigma_values[j])
+                MTE_value = compute_MTE_embedded(time_series_data[i], time_series_data[j], sigma_values[i], sigma_values[j])
                 graph.add_edge(node_labels[i], node_labels[j], weight=MTE_value)
+
+
+def update_graph():
+    time_series_list = [X, Y]
+    sigma = silvermans_rule(time_series_list)
+
+    # Plotting and computing MTE for each timestep
+    for time_index in range(100 - (dimensions - 1) * lag):  # Adjust based on the number of embeddings
+        G = nx.DiGraph()
+        for i in range(len(time_series_list)):
+            for j in range(len(time_series_list)):
+                if i != j:
+                    mte = compute_MTE_embedded(time_series_list[i][time_index:time_index + dimensions * lag],
+                                    time_series_list[j][time_index:time_index + dimensions * lag], sigma, sigma)
+                    if abs(mte) > 1e-5:  # Threshold for significant MTE
+                        G.add_edge(f'Series {i}', f'Series {j}', weight=mte)
+
+        # Drawing the graph for the current timestep
+        if G.number_of_edges() > 0:
+            plt.figure(figsize=(8, 8))
+            pos = nx.spring_layout(G)
+            edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
+            nx.draw(G, pos, node_color='skyblue', node_size=500, edgelist=edges,
+                    edge_color=weights, width=3, edge_cmap=plt.cm.Blues, with_labels=True)
+            plt.title(f'Network Graph at Timestep {time_index}')
+            plt.show()
+        else:
+            print(f"No significant edges to display at timestep {time_index}.")
