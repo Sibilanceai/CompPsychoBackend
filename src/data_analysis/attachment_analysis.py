@@ -5,15 +5,25 @@ from networkx.algorithms import community
 from sklearn.metrics import mutual_info_score
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+import csv
 from community import community_louvain
 from node2vec import Node2Vec
 from scipy.stats import pearsonr
 
 # Load event sequences
 event_sequences = pd.read_csv("event_sequences.csv")
+def read_characters_from_csv(file_path):
+    """ Read character names from a CSV file and return them as a list. """
+    characters = []
+    with open(file_path, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if row:  # Ensure the row is not empty
+                characters.append(row[0])
+    return characters
 
 # Example list of tracked individuals
-tracked_individuals = ['person1', 'person2', 'person3']  # Update this list based on your actual tracked individuals
+tracked_individuals = read_characters_from_csv('characters.csv')  # Update this list based on your actual tracked individuals, and file path
 
 # Function to filter subjects and objects to those being tracked
 def filter_tracked_individuals(subjects, objects, tracked_individuals):

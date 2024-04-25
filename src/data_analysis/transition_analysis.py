@@ -10,6 +10,7 @@ from sklearn.cluster import KMeans
 import networkx as nx
 from scipy.stats import ttest_ind
 import csv
+import re
 
 # Construct the path relative to transition_analysis.py
 def get_file_path(hierarchy, temporality):
@@ -20,6 +21,15 @@ def read_csv_to_list(file_path):
         reader = csv.reader(f)
         return list(reader)
 
+def read_characters_from_csv(file_path):
+    """ Read character names from a CSV file and return them as a list. """
+    characters = []
+    with open(file_path, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if row:  # Ensure the row is not empty
+                characters.append(row[0])
+    return characters
 
 # Function to combine BC and PS predictions into overall state
 def combine_predictions(predicted_labels_BC, predicted_labels_PS):
@@ -75,7 +85,6 @@ def load_and_classify_events():
     return events, combined_states_all_sentences, combined_states_all_tuples
 
 
-import re
 
 def clean_character_name(name):
     # Strip unwanted characters and fix common formatting issues
@@ -155,10 +164,37 @@ For PS:
 # Initialization and normalize Transition matrices methods
 
 # Assume you have a way to get the subject of the event, placeholder here
-def get_subject_from_event(event_tups):
-    # Placeholder: replace with actual logic to extract subject
-    characters
-    return characters[0]
+def get_subject_from_event(event_tup, characters):
+    """
+    Check if the subject of the event tuple contains any of the character names in the list and return the character's name if found,
+    ensuring the returned name matches the exact format in the characters list despite variations in the event tuple.
+    
+    Args:
+    event_tup (tuple): The event tuple where the first item is the subject.
+    characters (list): A list of character names, case-sensitive.
+    
+    Returns:
+    str or None: The name of the character if found in the characters list; otherwise, returns None.
+    """
+
+    print("characters", characters)
+    print("event_tup", event_tup)
+    # Extract the subject from the first index of the tuple
+    subject = event_tup[0]
+
+    # Normalize the subject for robust checking (e.g., lowercasing, removing punctuation)
+    normalized_subject = re.sub(r'[^\w\s]', '', subject.lower())  # Remove punctuation and convert to lower case
+
+    # Iterate over characters to find a match in the normalized subject text
+    for char in characters:
+        # Normalize character name similarly for matching
+        normalized_char = re.sub(r'[^\w\s]', '', char.lower())
+
+        # Check if the normalized character name is in the normalized subject text
+        if normalized_char in normalized_subject:
+            return char  # Return the original character name from the list if found
+
+    return None  # Return None if no match is found
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
     matrices = {}
@@ -238,24 +274,24 @@ def process_and_update_matrices(events_dict, transition_matrices):
         combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
         combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
 
-
+        print("tuples: ", tuples)
         # process sentences
         for i in range(len(combined_states_all_sentences) - 1):
-            subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
+            subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
             print(subject)
-            prev_state = combined_states_all_sentences[i]
-            next_state = combined_states_all_sentences[i + 1]
+            if subject != None: 
+                prev_state = combined_states_all_sentences[i]
+                next_state = combined_states_all_sentences[i + 1]
+                update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+            
 
-            update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
-        
-
-        # Process Tuples in the same manner if needed
-        for i in range(len(combined_states_all_tuples) - 1):
-            subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
-            prev_state = combined_states_all_tuples[i]
-            next_state = combined_states_all_tuples[i + 1]
-
-            update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+        # # Process Tuples in the same manner if needed
+        # for i in range(len(combined_states_all_tuples) - 1):
+        #     subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
+        #     if subject != None:
+        #         prev_state = combined_states_all_tuples[i]
+        #         next_state = combined_states_all_tuples[i + 1]
+        #         update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
 
 
 
