@@ -69,12 +69,19 @@ def load_and_classify_events():
     # Load events for each combination of hierarchy and temporality
     for (hierarchy, temporality), (sentences_path, tuples_path) in paths.items():
         sentences, tuples = load_events_from_csv(sentences_path, tuples_path)
+        print("loading code sentences ", sentences)
+        print("loading code tuples ", tuples)
         temporal_hierarchy_sentences = [item for sublist in sentences for item in sublist]
         temporal_hierarchy_tuples = [item for sublist in tuples for item in sublist]
+        print("loading code temporal_hierarchy_sentences ", sentences)
+        print("loading code temporal_hierarchy_tuples ", tuples)
+        # temporal_hierarchy_sentences = sentences
+        # temporal_hierarchy_tuples = tuples
         predicted_labels_BC_sent, predicted_labels_PS_sent = classify_new_events(temporal_hierarchy_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         predicted_labels_BC_tup, predicted_labels_PS_tup = classify_new_events(temporal_hierarchy_tuples, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         combined_states_all_sentences = combine_predictions(predicted_labels_BC_sent, predicted_labels_PS_sent)
         combined_states_all_tuples = combine_predictions(predicted_labels_BC_tup, predicted_labels_PS_tup)
+        print("loading code tuples: ", temporal_hierarchy_tuples)
         # Store the classified events
         events[(hierarchy, temporality)] = {
             'sentences': temporal_hierarchy_sentences,
