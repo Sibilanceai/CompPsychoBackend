@@ -43,9 +43,21 @@ class EventRepresentation:
             "temporal_category": self.temporal_category,
             "hierarchical_level": self.hierarchical_level,
         }
+    
+
+def read_characters_from_csv(file_path):
+    """ Read character names from a CSV file and return them as a list. """
+    characters = []
+    with open(file_path, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if row:  # Ensure the row is not empty
+                characters.append(row[0])
+    return characters
+
 
 # Global list to store unique characters
-characters = ["The Boy", "Eleanor"]
+characters = read_characters_from_csv('../characters.csv')
 # NOTE The ability to simply create a character list from the story itself should be used later but for now predefined characters to track are required
 def extract_characters_from_chunk(text_chunk, model, predefined_characters):
     """
