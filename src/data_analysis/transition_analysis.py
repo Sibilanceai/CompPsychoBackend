@@ -68,17 +68,20 @@ def load_and_classify_events():
     
     # Load events for each combination of hierarchy and temporality
     for (hierarchy, temporality), (sentences_path, tuples_path) in paths.items():
+
         sentences, tuples = load_events_from_csv(sentences_path, tuples_path)
         print("loading code sentences ", sentences)
         print("loading code tuples ", tuples)
-        temporal_hierarchy_sentences = [item for sublist in sentences for item in sublist]
-        temporal_hierarchy_tuples = [item for sublist in tuples for item in sublist]
+
+        temporal_hierarchy_sentences = [' '.join(map(str, sublist)) for sublist in sentences]
+        tuples_str = [' '.join(map(str, sublist)) for sublist in tuples]
+        temporal_hierarchy_tuples = [tuple(sublist) for sublist in tuples]
         print("loading code temporal_hierarchy_sentences ", sentences)
         print("loading code temporal_hierarchy_tuples ", tuples)
         # temporal_hierarchy_sentences = sentences
         # temporal_hierarchy_tuples = tuples
         predicted_labels_BC_sent, predicted_labels_PS_sent = classify_new_events(temporal_hierarchy_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
-        predicted_labels_BC_tup, predicted_labels_PS_tup = classify_new_events(temporal_hierarchy_tuples, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
+        predicted_labels_BC_tup, predicted_labels_PS_tup = classify_new_events(tuples_str, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         combined_states_all_sentences = combine_predictions(predicted_labels_BC_sent, predicted_labels_PS_sent)
         combined_states_all_tuples = combine_predictions(predicted_labels_BC_tup, predicted_labels_PS_tup)
         print("loading code tuples: ", temporal_hierarchy_tuples)
@@ -200,7 +203,7 @@ def get_subject_from_event(event_tup, characters):
         # Check if the normalized character name is in the normalized subject text
         if normalized_char in normalized_subject:
             return char  # Return the original character name from the list if found
-
+    print("no match found between: ", "subject: ", normalized_subject, " and characters", characters)
     return None  # Return None if no match is found
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
@@ -282,8 +285,11 @@ def process_and_update_matrices(events_dict, transition_matrices):
         combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
 
         print("tuples: ", tuples)
+        print("sentences: ", sentences)
         # process sentences
-        for i in range(len(combined_states_all_sentences) - 1):
+        print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
+        for i in range(len(tuples) - 1):
+            # NOTE we should figure out why the lengths for tuples and sentences differ if not might need a better method maybe just getting the subject no event tuples needed.
             subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
             print(subject)
             if subject != None: 
