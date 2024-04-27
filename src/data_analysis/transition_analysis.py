@@ -11,6 +11,7 @@ import networkx as nx
 from scipy.stats import ttest_ind
 import csv
 import re
+import copy
 
 # Construct the path relative to transition_analysis.py
 def get_file_path(hierarchy, temporality):
@@ -85,6 +86,7 @@ def load_and_classify_events():
         combined_states_all_sentences = combine_predictions(predicted_labels_BC_sent, predicted_labels_PS_sent)
         combined_states_all_tuples = combine_predictions(predicted_labels_BC_tup, predicted_labels_PS_tup)
         print("loading code tuples: ", temporal_hierarchy_tuples)
+        
         # Store the classified events
         events[(hierarchy, temporality)] = {
             'sentences': temporal_hierarchy_sentences,
@@ -278,24 +280,24 @@ def simulate_behavior(start_state, transition_matrix, num_steps):
     return states
 
 
-def process_and_update_matrices(events_dict, transition_matrices):
-    for (hierarchy, temporality), data in events_dict.items():
-        sentences, tuples = data['sentences'], data['tuples']
-        combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
-        combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
+# def process_and_update_matrices(events_dict, transition_matrices):
+#     for (hierarchy, temporality), data in events_dict.items():
+#         sentences, tuples = data['sentences'], data['tuples']
+#         combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
+#         combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
 
-        print("tuples: ", tuples)
-        print("sentences: ", sentences)
-        # process sentences
-        print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
-        for i in range(len(tuples) - 1):
-            # NOTE we should figure out why the lengths for tuples and sentences differ if not might need a better method maybe just getting the subject no event tuples needed.
-            subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
-            print(subject)
-            if subject != None: 
-                prev_state = combined_states_all_sentences[i]
-                next_state = combined_states_all_sentences[i + 1]
-                update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+#         print("tuples: ", tuples)
+#         print("sentences: ", sentences)
+#         # process sentences
+#         print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
+#         for i in range(len(tuples) - 1):
+#             # NOTE we should figure out why the lengths for tuples and sentences differ if not might need a better method maybe just getting the subject no event tuples needed.
+#             subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
+#             print(subject)
+#             if subject != None: 
+#                 prev_state = combined_states_all_sentences[i]
+#                 next_state = combined_states_all_sentences[i + 1]
+#                 update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
             
 
         # # Process Tuples in the same manner if needed
@@ -307,6 +309,31 @@ def process_and_update_matrices(events_dict, transition_matrices):
         #         update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
 
 
+def process_and_update_matrices(events_dict, transition_matrices):
+    time_series_matrices = {char: [] for char in characters}  # Prepare a dict to hold all time-series data
+    for (hierarchy, temporality), data in events_dict.items():
+        sentences, tuples = data['sentences'], data['tuples']
+        combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
+        combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
+
+        print("tuples: ", tuples)
+        print("sentences: ", sentences)
+        print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
+        
+        for i in range(len(tuples) - 1):
+            subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
+            if subject is not None: 
+                prev_state = combined_states_all_sentences[i]
+                next_state = combined_states_all_sentences[i + 1]
+                update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+
+        # Store the current state of the matrices for this timestep
+        for char in characters:
+            time_series_matrices[char].append(copy.deepcopy(transition_matrices[char]))
+
+    return time_series_matrices, transition_matrices
+
+
 
 
 # Load all events and their predictions
@@ -315,8 +342,16 @@ event_dict, pred_labels_sent, pred_labels_tups = load_and_classify_events()
 # Initialize your transition matrices
 transition_matrices = initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
 print(transition_matrices)
+
 # Process events and update matrices
-process_and_update_matrices(event_dict, transition_matrices)
+# At the end of your data processing script, save the time series matrices
+time_series_matrices, final_matrices = process_and_update_matrices(event_dict, transition_matrices)
+for character, matrices in time_series_matrices.items():
+    np.save(f'transition_matrices_{character}.npy', matrices)
+
+# Save final matrices for each character
+for character, matrix in final_matrices.items():
+    np.save(f'transition_matrices_final_{character}.npy', matrix)
 
 # Normalize and save matrices
 normalize_matrices(transition_matrices)

@@ -3,6 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
 from mTE_graph_calculation import compute_MTE_embedded, silvermans_rule
+import csv
 
 # Generate synthetic data
 num_agents = 2
@@ -44,49 +45,51 @@ def plot_network_evolution(snapshots):
     plt.tight_layout()
     plt.show()
 
-# from networkx.algorithms import community
-# from community import community_louvain
 
-# def analyze_community_evolution(snapshots):
-#     """
-#     Analyzes the evolution of community structure over time.
-    
-#     :param snapshots: A list of NetworkX graphs representing the network at different time points.
-#     """
-#     community_changes = []
+# TODO change to use our transition matrices saved, it should be a time series each
 
-#     for G in snapshots:
-#         partition = community_louvain.best_partition(G)
-#         num_communities = len(set(partition.values()))
-#         community_changes.append(num_communities)
-    
-#     plt.figure(figsize=(8, 6))
-#     plt.plot(community_changes, marker='o', linestyle='-')
-#     plt.title('Evolution of Community Structure')
-#     plt.xlabel('Time Snapshot')
-#     plt.ylabel('Number of Communities')
-#     plt.grid(True)
-#     plt.show()
+# # Generate synthetic data
+# num_agents = 2
+# block_size = 4  # 4x4 blocks, can extend this with level of granularity in your schema
+# num_timesteps = 5  # Number of timesteps
+# agent_matrices = [np.random.rand(num_timesteps, 3, 3, block_size, block_size) for _ in range(num_agents)]
+
+def read_characters_from_csv(file_path):
+    """ Read character names from a CSV file and return them as a list. """
+    characters = []
+    with open(file_path, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if row:  # Ensure the row is not empty
+                characters.append(row[0])
+    return characters
+
+def load_final_matrices(character):
+    return np.load(f'transition_matrices_final_{character}.npy', allow_pickle=True)
+
+def load_time_series_matrices(character):
+    return np.load(f'transition_matrices_time_series_{character}.npy', allow_pickle=True)
+
+# Example: Load final matrices for graph analysis
+characters_file_path = "../characters.csv"
+agent_names = read_characters_from_csv(characters_file_path)  
+final_agent_matrices = {agent: load_final_matrices(agent) for agent in agent_names}
+
+# Example: Load time series matrices if needed
+time_series_agent_matrices = {agent: load_time_series_matrices(agent) for agent in agent_names}
 
 
-# --------------------------------------------------- testing block end ----------------------------------------------------------
+num_timesteps = len(agent_matrices[agent_names[0]])  # Assuming all characters have the same number of timesteps
 
 
 
-
-
-# Generate synthetic data
-num_agents = 2
-block_size = 4  # 4x4 blocks
-num_timesteps = 5  # Number of timesteps
-agent_matrices = [np.random.rand(num_timesteps, 3, 3, block_size, block_size) for _ in range(num_agents)]
 
 all_graphs = []  # Store graphs for evolution analysis
 
 # Process and create networks for each timestep
 significant_te_threshold = 0.2  # threshold for significant TE values
 
-
+# TODO vectorize and make this more efficient
 for time in range(num_timesteps):
     G = nx.DiGraph()
     for i in range(3):
