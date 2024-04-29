@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
-from mTE_graph_calculation import compute_MTE_embedded, silvermans_rule
+from mTE_graph_calculation import compute_MTE_embedded, compute_MTE, silvermans_rule
 import csv
 
 
@@ -125,27 +125,35 @@ print("agent_names", agent_names)
 
 
 all_graphs = []  # This will collect all graphs over time
-
+print("num_timesteps ", num_timesteps)
 for time in range(num_timesteps):
     G = nx.DiGraph()
+    # TODO we shouldnt need this
     category = 'high-level'
     term = 'long-term'
-
-    # Assuming matrix access is correct as per your structure
-    # TODO make it dynamically create matrices for the characters in the story
+    # TODO fix this so it is dynamically creating the matrices and it should use all of the matrices not just high level long term
     matrix_boy = time_series_agent_matrices[agent_names[0]][time][category][term]
     matrix_eleanor = time_series_agent_matrices[agent_names[1]][time][category][term]
     matrix_dim = matrix_boy.shape[0]
 
-    # Print matrix dimensions for debugging
     print(f"Time {time}: Boy matrix shape {matrix_boy.shape}, Eleanor matrix shape {matrix_eleanor.shape}")
 
     for i in range(matrix_dim):
         for j in range(matrix_dim):
             Ax = matrix_boy[i][j].flatten()
             Ay = matrix_eleanor[i][j].flatten()
-            te_Ax_to_Ay = compute_MTE_embedded(Ax, Ay)
-            te_Ay_to_Ax = compute_MTE_embedded(Ay, Ax)
+            
+            # Check if data is too sparse for embeddings
+            # TODO make this dynamically calculated
+            min_data_points_required = 2 * 1 + 1  # This matches lag=1, dimensions=2, adjust as needed
+            if np.count_nonzero(Ax) < min_data_points_required or np.count_nonzero(Ay) < min_data_points_required:
+                te_Ax_to_Ay = compute_MTE(matrix_boy[i][j], matrix_eleanor[i][j])
+                print("te_Ax_to_Ay", te_Ax_to_Ay)
+                te_Ay_to_Ax = compute_MTE(matrix_eleanor[i][j], matrix_boy[i][j])
+                print("te_Ay_to_Ax", te_Ay_to_Ax)
+            else:
+                te_Ax_to_Ay = compute_MTE_embedded(X=Ax, Y=Ay, lag=1, dimensions=2)
+                te_Ay_to_Ax = compute_MTE_embedded(X=Ay, Y=Ax, lag=1, dimensions=2)
 
             if abs(te_Ax_to_Ay) > significant_te_threshold:
                 G.add_edge(f'Boy_{i*matrix_dim+j}', f'Eleanor_{i*matrix_dim+j}', weight=te_Ax_to_Ay)
@@ -186,5 +194,5 @@ def plot_network_evolution(graphs):
     plt.show()
 
 # Call this function with all_graphs
-plot_network_evolution(all_graphs)
+# plot_network_evolution(all_graphs)
 

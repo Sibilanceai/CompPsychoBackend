@@ -5,14 +5,14 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 
 # Step 2: Generate Synthetic Time Series Data
-np.random.seed(42)
+# np.random.seed(42)
 
-# Generate synthetic time series data
-lag = 1
-dimensions = 3
-t = np.linspace(0, 10, 100)
-X = np.sin(t) + 0.5 * np.random.normal(size=t.shape)
-Y = np.cos(t) + 0.5 * np.random.normal(size=t.shape)
+# # Generate synthetic time series data
+# lag = 1
+# dimensions = 3
+# t = np.linspace(0, 10, 100)
+# X = np.sin(t) + 0.5 * np.random.normal(size=t.shape)
+# Y = np.cos(t) + 0.5 * np.random.normal(size=t.shape)
 
 def silvermans_rule(time_series_list):
     d = len(time_series_list)  # Number of time series
@@ -23,8 +23,8 @@ def silvermans_rule(time_series_list):
     return sigma
 
 # Example usage with multiple time series
-time_series_list = [X, Y]  # Assuming X and Y are numpy arrays
-sigma = silvermans_rule(time_series_list)
+# time_series_list = [X, Y]  # Assuming X and Y are numpy arrays
+# sigma = silvermans_rule(time_series_list)
 
 def gaussian_kernel_normalized(X, sigma):
     """Generate Gaussian Kernel Gram matrix with normalization."""
@@ -42,35 +42,36 @@ def matrix_entropy(G):
     return entropy
 
 
-def compute_MTE(X, Y):
+def compute_MTE(X_matrix, Y_matrix, sigma=0.4):
     """Compute the Matrix Transfer Entropy from time series Y to X."""
     # Reshape data for Gaussian kernel calculation
-    X_matrix = X.reshape(-1, 1)
-    Y_matrix = Y.reshape(-1, 1)
+    X_matrix = X_matrix.reshape(-1, 1)
+    Y_matrix = Y_matrix.reshape(-1, 1)
     
-    
-    # Calculate the Gram matrices using the normalized Gaussian kernel
+
+    # Computing Gram matrices using the normalized Gaussian kernel
     G_X = gaussian_kernel_normalized(X_matrix, sigma)
     G_Y = gaussian_kernel_normalized(Y_matrix, sigma)
-    
-    # Assuming G_X, G_Y are used directly to represent G_Q and G_R
-    G_Q = G_X  # Simplification if Q represents the same as G_X
-    G_R = G_X  # Assuming R also represents the same; adjust as per actual definition
-    G_S = G_Y
 
-    # Calculate Joint Gram Matrix using Hadamard products for joint matrices
-    G_T = (G_R * G_S) / np.trace(G_R * G_S)  # Adjust normalization as per actual data
+    # Normalized matrices for the entropy calculation
+    G_R = G_X  # Assuming G_R is based on X
+    G_S = G_Y  # Assuming G_S is based on Y
+    G_Q = G_X  # Assuming G_Q is also based on X
 
-    # Compute entropies
-    entropy_R = matrix_entropy(G_R)
-    entropy_T = matrix_entropy(G_T)
-    
-    # Compute MTE
-    MTE_Y_to_X = (-np.log(np.trace((G_Q * G_R / np.trace(G_Q * G_R))**2)) +
-                  np.log(np.trace(G_R**2)) +
-                  np.log(np.trace((G_Q * G_T / np.trace(G_Q * G_T))**2)) -
-                  np.log(np.trace(G_T**2)))
-    
+    # Compute Normalized Hadamard Products
+    G_T = (G_R * G_S) / np.trace(G_R * G_S)
+    G_QR = (G_Q * G_R) / np.trace(G_Q * G_R)
+    G_QT = (G_Q * G_T) / np.trace(G_Q * G_T)
+
+    # Compute entropies based on matrix traces
+    entropy_R = -np.log(np.trace(G_R @ G_R))
+    entropy_T = -np.log(np.trace(G_T @ G_T))
+
+    # MTE computation
+    MTE_Y_to_X = (-np.log(np.trace(G_QR)) +
+                  entropy_R +
+                  np.log(np.trace(G_QT)) -
+                  entropy_T)
     return MTE_Y_to_X
 
 
@@ -123,14 +124,14 @@ def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
     return MTE_Y_to_X
 
 
-MTE_value = compute_MTE(X, Y)
+# MTE_value = compute_MTE(X, Y)
 # MTE_value_embed = compute_MTE_embedded(X, Y, lag, dimensions, sigma_X=sigma, sigma_Y=sigma)
 # When calling compute_MTE, add exception handling to catch potential errors
-try:
-    MTE_value_embed = compute_MTE_embedded(X, Y, lag, dimensions, sigma_X=sigma, sigma_Y=sigma)
-    print("MTE from Y to X:", MTE_value_embed)
-except Exception as e:
-    print("Error during MTE computation:", str(e))
+# try:
+#     MTE_value_embed = compute_MTE_embedded(X, Y, lag, dimensions, sigma_X=sigma, sigma_Y=sigma)
+#     print("MTE from Y to X:", MTE_value_embed)
+# except Exception as e:
+#     print("Error during MTE computation:", str(e))
 
 def update_graph_with_MTE(time_series_data, sigma_values, graph, node_labels):
     """Update the directed graph with MTE calculations."""
@@ -141,7 +142,7 @@ def update_graph_with_MTE(time_series_data, sigma_values, graph, node_labels):
                 graph.add_edge(node_labels[i], node_labels[j], weight=MTE_value)
 
 
-def update_graph():
+def update_graph(X=None, Y=None,dimensions=3, lag=1):
     time_series_list = [X, Y]
     sigma = silvermans_rule(time_series_list)
 
