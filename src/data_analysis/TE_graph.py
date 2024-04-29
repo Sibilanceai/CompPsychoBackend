@@ -81,7 +81,7 @@ num_timesteps = len(time_series_agent_matrices[agent_names[0]])  # Assuming all 
 all_graphs = []  # Store graphs for evolution analysis
 
 # Process and create networks for each timestep
-significant_te_threshold = 0.2  # threshold for significant TE values
+significant_te_threshold = 0.002  # threshold for significant TE values
 # Print the first entry of each agent's matrix to see the structure
 print(time_series_agent_matrices['Boy'][0])
 print(time_series_agent_matrices['Eleanor'][0])
