@@ -89,88 +89,126 @@ print(time_series_agent_matrices['Eleanor'][0])
 print("time_series_agent_matrices.keys()", time_series_agent_matrices.keys())
 print("agent_names", agent_names)
 # TODO vectorize and make this more efficient
-# for time in range(num_timesteps):
-#     G = nx.DiGraph()
-#     for i in range(3):
-#         for j in range(3):
-#             for k in range(3):
-#                 for l in range(3):
-#                     # TODO add logic to handle more than 2 characters
-#                     Ax = time_series_agent_matrices[agent_names[0]][time][i][j].flatten()
-#                     Ay = time_series_agent_matrices[agent_names[1]][time][k][l].flatten()
-#                     te_Ax_to_Ay = compute_MTE_embedded(Ax, Ay)
-#                     te_Ay_to_Ax = compute_MTE_embedded(Ay, Ax)
 
-#                     if abs(te_Ax_to_Ay) > significant_te_threshold:
-#                         G.add_edge(f'Agent1_Block_{i*3+j+1}', f'Agent2_Block_{k*3+l+1}', weight=te_Ax_to_Ay)
-#                     if abs(te_Ay_to_Ax) > significant_te_threshold:
-#                         G.add_edge(f'Agent2_Block_{k*3+l+1}', f'Agent1_Block_{i*3+j+1}', weight=te_Ay_to_Ax)
 
-              
+# Define the structure of categories and terms
+categories = ['high-level', 'task-specific', 'context-specific']
+terms = ['short-term', 'medium-term', 'long-term']
 
-#     all_graphs.append(G)  # Store the graph
+# Map category and term combinations to a color index
+label_to_index = {f'{cat}_{term}': i + j * len(categories)
+                  for i, cat in enumerate(categories)
+                  for j, term in enumerate(terms)}
 
-#     if G.number_of_edges() > 0:
-#         plt.figure(figsize=(12, 12))
-#         pos = nx.spring_layout(G)
-#         edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
-#         nx.draw(G, pos, node_color='lightblue', node_size=500, edgelist=edges, edge_color=weights, width=3, edge_cmap=plt.cm.Blues, with_labels=True)
-#         plt.title(f"Network Graph at Time {time}")
-#         plt.show()
-#     else:
-#         print(f"No edges to display at time {time}.")
+significant_te_threshold = 0.002  # Define a significant threshold for TE
 
-# Assuming the matrices are 4x4 as per the data you provided
-# Add debug statements to print the matrix details before accessing it
+# Define a colormap with enough colors for each group
+cmap = plt.cm.get_cmap('viridis', len(label_to_index))
 
+def get_color_for_node(group):
+    index = label_to_index.get(group, 0)  # Default index to 0 if group not found
+    return cmap(index / len(label_to_index))  # Normalize index for colormap
+
+
+
+# Example timestep number for visualization
+num_timesteps = 9  # Adjust as per your setup
 
 all_graphs = []  # This will collect all graphs over time
-print("num_timesteps ", num_timesteps)
+
 for time in range(num_timesteps):
     G = nx.DiGraph()
-    # TODO we shouldnt need this
-    category = 'high-level'
-    term = 'long-term'
-    # TODO fix this so it is dynamically creating the matrices and it should use all of the matrices not just high level long term
-    matrix_boy = time_series_agent_matrices[agent_names[0]][time][category][term]
-    matrix_eleanor = time_series_agent_matrices[agent_names[1]][time][category][term]
-    matrix_dim = matrix_boy.shape[0]
 
-    print(f"Time {time}: Boy matrix shape {matrix_boy.shape}, Eleanor matrix shape {matrix_eleanor.shape}")
+    # Define node positions
+    positions = {}
 
-    for i in range(matrix_dim):
-        for j in range(matrix_dim):
-            Ax = matrix_boy[i][j].flatten()
-            Ay = matrix_eleanor[i][j].flatten()
-            
-            # Check if data is too sparse for embeddings
-            # TODO make this dynamically calculated
-            min_data_points_required = 2 * 1 + 1  # This matches lag=1, dimensions=2, adjust as needed
-            if np.count_nonzero(Ax) < min_data_points_required or np.count_nonzero(Ay) < min_data_points_required:
-                te_Ax_to_Ay = compute_MTE(matrix_boy[i][j], matrix_eleanor[i][j])
-                print("te_Ax_to_Ay", te_Ax_to_Ay)
-                te_Ay_to_Ax = compute_MTE(matrix_eleanor[i][j], matrix_boy[i][j])
-                print("te_Ay_to_Ax", te_Ay_to_Ax)
-            else:
-                te_Ax_to_Ay = compute_MTE_embedded(X=Ax, Y=Ay, lag=1, dimensions=2)
-                te_Ay_to_Ax = compute_MTE_embedded(X=Ay, Y=Ax, lag=1, dimensions=2)
+    # Customize the spacing parameters
+    x_offset = 2  # Horizontal offset between different categories
+    y_offset = 2  # Vertical offset between different terms
+    group_offset = 10  # Offset between groups of nodes (Boy vs Eleanor)
 
-            if abs(te_Ax_to_Ay) > significant_te_threshold:
-                G.add_edge(f'Boy_{i*matrix_dim+j}', f'Eleanor_{i*matrix_dim+j}', weight=te_Ax_to_Ay)
-            if abs(te_Ay_to_Ax) > significant_te_threshold:
-                G.add_edge(f'Eleanor_{i*matrix_dim+j}', f'Boy_{i*matrix_dim+j}', weight=te_Ay_to_Ax)
+
+    for i, category in enumerate(categories):
+        for j, term in enumerate(terms):
+            for k, agent in enumerate(agent_names):
+                node_id = f"{category}_{term}_{agent}"
+                x_position = i * x_offset + k * group_offset
+                y_position = j * y_offset
+                positions[node_id] = (x_position, y_position)
+                G.add_node(node_id, group=node_id,pos=(x_position, y_position), label=node_id)
+
+
+
+
+    # Check if all nodes have 'group' attribute before plotting
+    missing_group = [n for n, attr in G.nodes(data=True) if 'group' not in attr]
+    if missing_group:
+        print("These nodes are missing 'group' attributes:", missing_group)
+    else:
+        print("All nodes have 'group' attributes.")
+
+
+
+    # Analyze the matrices and add edges based on TE
+    for category in categories:
+        for term in terms:
+            matrix_boy = time_series_agent_matrices[agent_names[0]][time][category][term]
+            matrix_eleanor = time_series_agent_matrices[agent_names[1]][time][category][term]
+            matrix_dim = matrix_boy.shape[0]
+
+            print(f"Time {time}, Category {category}, Term {term}: Boy matrix shape {matrix_boy.shape}, Eleanor matrix shape {matrix_eleanor.shape}")
+
+            for i in range(matrix_dim):
+                for j in range(matrix_dim):
+                    Ax = matrix_boy[i][j].flatten()
+                    Ay = matrix_eleanor[i][j].flatten()
+
+                    # Check if data is too sparse for embeddings
+                    min_data_points_required = 2 * 1 + 1  # This matches lag=1, dimensions=2, adjust as needed
+                    if np.count_nonzero(Ax) < min_data_points_required or np.count_nonzero(Ay) < min_data_points_required:
+                        te_Ax_to_Ay = compute_MTE(matrix_boy[i][j], matrix_eleanor[i][j])
+                        te_Ay_to_Ax = compute_MTE(matrix_eleanor[i][j], matrix_boy[i][j])
+                    else:
+                        te_Ax_to_Ay = compute_MTE_embedded(X=Ax, Y=Ay, lag=1, dimensions=2)
+                        te_Ay_to_Ax = compute_MTE_embedded(X=Ay, Y=Ax, lag=1, dimensions=2)
+
+                    if abs(te_Ax_to_Ay) > significant_te_threshold:
+                        G.add_edge(f'{category}_{term}_Boy', f'{category}_{term}_Eleanor', weight=te_Ax_to_Ay)
+                    if abs(te_Ay_to_Ax) > significant_te_threshold:
+                        G.add_edge(f'{category}_{term}_Eleanor', f'{category}_{term}_Boy', weight=te_Ay_to_Ax)
+
 
     all_graphs.append(G)
-
+    # Draw the graph
     if G.number_of_edges() > 0:
         plt.figure(figsize=(12, 12))
-        pos = nx.spring_layout(G)
-        edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
-        nx.draw(G, pos, node_color='lightblue', node_size=500, edgelist=edges, edge_color=weights, width=3, edge_cmap=plt.cm.Blues, with_labels=True)
-        plt.title(f"Network Graph at Time {time}")
+        pos = nx.get_node_attributes(G, 'pos')
+        # Check if all nodes have 'group' attribute before plotting
+        # Print node details to confirm correct attribute assignment
+        for node, data in G.nodes(data=True):
+            print(f"Node: {node}, Data: {data}")
+
+        missing_group = [n for n, attr in G.nodes(data=True) if 'group' not in attr]
+        if missing_group:
+            print("These nodes are missing 'group' attributes:", missing_group)
+        else:
+            print("All nodes have 'group' attributes.")
+        node_colors = [get_color_for_node(data['group']) for n, data in G.nodes(data=True)]  # Use safe color mapping
+        nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=700, edge_color='grey')
+        edge_labels = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+        plt.title("Network Graph")
         plt.show()
     else:
-        print(f"No edges to display at time {time}.")
+        print("No edges to display.")
+
+
+
+
+
+
+
+
 
 
 # analyze_community_evolution(all_graphs)
