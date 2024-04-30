@@ -162,13 +162,15 @@ for time in range(num_timesteps):
                 for j in range(matrix_dim):
                     Ax = matrix_boy[i][j].flatten()
                     Ay = matrix_eleanor[i][j].flatten()
-
+                    print("matrix_boy[i][j], matrix_eleanor[i][j]: ", matrix_boy[i][j], matrix_eleanor[i][j])
                     # Check if data is too sparse for embeddings
                     min_data_points_required = 2 * 1 + 1  # This matches lag=1, dimensions=2, adjust as needed
                     if np.count_nonzero(Ax) < min_data_points_required or np.count_nonzero(Ay) < min_data_points_required:
-                        te_Ax_to_Ay = compute_MTE(matrix_boy[i][j], matrix_eleanor[i][j])
-                        te_Ay_to_Ax = compute_MTE(matrix_eleanor[i][j], matrix_boy[i][j])
+                        # TODO check why this is the index so a specifical transition matrix value, we should also see why we are just giving a single matrix at each time step, shouldnt this be a running time series we add?
+                        te_Ax_to_Ay = compute_MTE(matrix_boy, matrix_eleanor)
+                        te_Ay_to_Ax = compute_MTE(matrix_eleanor, matrix_boy)
                     else:
+                        # TODO this is wrong, should be running time series not just the 4x4 transition matrix from one block.
                         te_Ax_to_Ay = compute_MTE_embedded(X=Ax, Y=Ay, lag=1, dimensions=2)
                         te_Ay_to_Ax = compute_MTE_embedded(X=Ay, Y=Ax, lag=1, dimensions=2)
 
