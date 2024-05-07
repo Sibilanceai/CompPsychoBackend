@@ -93,15 +93,18 @@ def create_time_lagged_embeddings(X, lag, dimensions):
     return embedded_data
 
 def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
-    
+    print(f"Shape of X before operation: {X.shape}")
+    print(f"Shape of Y before operation: {Y.shape}")
     # Embedding the data with time lags
+    print("time lag start")
     X_embedded = create_time_lagged_embeddings(X, lag, dimensions)
     Y_embedded = create_time_lagged_embeddings(Y, lag, dimensions)
+    print("time lag end")
 
     # Computing Gram matrices using the normalized Gaussian kernel
     G_X = gaussian_kernel_normalized(X_embedded, sigma_X)
     G_Y = gaussian_kernel_normalized(Y_embedded, sigma_Y)
-
+    print("gaussian kernel end")
     # Normalized matrices for the entropy calculation
     G_R = G_X  # Assuming G_R is based on X
     G_S = G_Y  # Assuming G_S is based on Y
@@ -111,16 +114,17 @@ def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
     G_T = (G_R * G_S) / np.trace(G_R * G_S)
     G_QR = (G_Q * G_R) / np.trace(G_Q * G_R)
     G_QT = (G_Q * G_T) / np.trace(G_Q * G_T)
-
+    print("compute normalized end")
     # Compute entropies based on matrix traces
     entropy_R = -np.log(np.trace(G_R @ G_R))
     entropy_T = -np.log(np.trace(G_T @ G_T))
-
+    print("entropy end")
     # MTE computation
     MTE_Y_to_X = (-np.log(np.trace(G_QR)) +
                   entropy_R +
                   np.log(np.trace(G_QT)) -
                   entropy_T)
+    print("MTE end")
     return MTE_Y_to_X
 
 

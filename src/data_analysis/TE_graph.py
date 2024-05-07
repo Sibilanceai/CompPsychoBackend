@@ -6,41 +6,6 @@ from mTE_graph_calculation import compute_MTE_embedded, compute_MTE, silvermans_
 import csv
 
 
-# def plot_network_evolution(snapshots):
-#     """
-#     Plots the evolution of various network metrics over time.
-    
-#     :param snapshots: A list of NetworkX graphs representing the network at different time points.
-#     """
-    
-
-#     metrics = {
-#         'Number of Nodes': [],
-#         'Number of Edges': [],
-#         'Average Degree': [],
-#         'Clustering Coefficient': []
-#     }
-    
-#     for G in snapshots:
-#         metrics['Number of Nodes'].append(len(G.nodes()))
-#         metrics['Number of Edges'].append(len(G.edges()))
-#         degrees = [deg for node, deg in G.degree()]
-#         metrics['Average Degree'].append(np.mean(degrees) if degrees else 0)
-#         metrics['Clustering Coefficient'].append(nx.average_clustering(G))
-    
-#     # Plotting the evolution of network metrics
-#     plt.figure(figsize=(14, 10))
-#     for i, (metric, values) in enumerate(metrics.items(), start=1):
-#         plt.subplot(2, 2, i)
-#         plt.plot(values, marker='o', linestyle='-')
-#         plt.title(metric)
-#         plt.xlabel('Time Snapshot')
-#         plt.ylabel(metric)
-    
-#     plt.tight_layout()
-#     plt.show()
-
-
 
 # # Generate synthetic data
 # num_agents = 2
@@ -116,68 +81,64 @@ num_timesteps = 9  # Adjust as per your setup
 
 all_graphs = []  # This will collect all graphs over time
 
+# Create data structures to store time series for each category-term block
+time_series_data = {
+    agent: {cat: {term: [] for term in terms} for cat in categories} for agent in agent_names
+}
+
+# Define these for the data
+lag = 1
+dimensions = 2
+use_embeddings = True
+
+
 for time in range(num_timesteps):
     G = nx.DiGraph()
 
-    # Define node positions
+    # Define node positions and customize spacing
     positions = {}
+    x_offset, y_offset, group_offset = 2, 2, 10
 
-    # Customize the spacing parameters
-    x_offset = 2  # Horizontal offset between different categories
-    y_offset = 2  # Vertical offset between different terms
-    group_offset = 10  # Offset between groups of nodes (Boy vs Eleanor)
-
-
+    # Initialize nodes
     for i, category in enumerate(categories):
         for j, term in enumerate(terms):
             for k, agent in enumerate(agent_names):
                 node_id = f"{category}_{term}_{agent}"
-                x_position = i * x_offset + k * group_offset
-                y_position = j * y_offset
-                positions[node_id] = (x_position, y_position)
-                G.add_node(node_id, group=node_id,pos=(x_position, y_position), label=node_id)
+                positions[node_id] = (i * x_offset + k * group_offset, j * y_offset)
+                G.add_node(node_id, pos=positions[node_id], label=node_id, group=f"{category}_{term}")
 
 
-
-
-    # Check if all nodes have 'group' attribute before plotting
-    missing_group = [n for n, attr in G.nodes(data=True) if 'group' not in attr]
-    if missing_group:
-        print("These nodes are missing 'group' attributes:", missing_group)
-    else:
-        print("All nodes have 'group' attributes.")
-
-
-
-    # Analyze the matrices and add edges based on TE
+    # Aggregate data and compute TE
     for category in categories:
         for term in terms:
-            matrix_boy = time_series_agent_matrices[agent_names[0]][time][category][term]
-            matrix_eleanor = time_series_agent_matrices[agent_names[1]][time][category][term]
-            matrix_dim = matrix_boy.shape[0]
+            for i, agent_i in enumerate(agent_names):
+                for j, agent_j in enumerate(agent_names):
+                    if i != j:
+                        matrix_i = np.concatenate([time_series_agent_matrices[agent_i][t][category][term] for t in range(time+1)], axis=0)
+                        matrix_j = np.concatenate([time_series_agent_matrices[agent_j][t][category][term] for t in range(time+1)], axis=0)
+                        # Check the shape before computation
+                        print(f"Shape before TE computation for {category}_{term} from {agent_i} to {agent_j}: matrix_i shape={matrix_i.shape}, matrix_j shape={matrix_j.shape}")
 
-            print(f"Time {time}, Category {category}, Term {term}: Boy matrix shape {matrix_boy.shape}, Eleanor matrix shape {matrix_eleanor.shape}")
+                        # Flatten the matrices before TE computation
+                        matrix_i_flat = matrix_i.flatten()
+                        matrix_j_flat = matrix_j.flatten()
+                        # Check the shape before computation
+                        print(f"Shape after flattening and before TE computation for {category}_{term} from {agent_i} to {agent_j}: matrix_i shape={matrix_i_flat.shape}, matrix_j shape={matrix_j_flat.shape}")
 
-            for i in range(matrix_dim):
-                for j in range(matrix_dim):
-                    Ax = matrix_boy[i][j].flatten()
-                    Ay = matrix_eleanor[i][j].flatten()
-                    print("matrix_boy[i][j], matrix_eleanor[i][j]: ", matrix_boy[i][j], matrix_eleanor[i][j])
-                    # Check if data is too sparse for embeddings
-                    min_data_points_required = 2 * 1 + 1  # This matches lag=1, dimensions=2, adjust as needed
-                    if np.count_nonzero(Ax) < min_data_points_required or np.count_nonzero(Ay) < min_data_points_required:
-                        # TODO check why this is the index so a specifical transition matrix value, we should also see why we are just giving a single matrix at each time step, shouldnt this be a running time series we add?
-                        te_Ax_to_Ay = compute_MTE(matrix_boy, matrix_eleanor)
-                        te_Ay_to_Ax = compute_MTE(matrix_eleanor, matrix_boy)
-                    else:
-                        # TODO this is wrong, should be running time series not just the 4x4 transition matrix from one block.
-                        te_Ax_to_Ay = compute_MTE_embedded(X=Ax, Y=Ay, lag=1, dimensions=2)
-                        te_Ay_to_Ax = compute_MTE_embedded(X=Ay, Y=Ax, lag=1, dimensions=2)
+                        # Check if there's enough data to perform embedding
+                        if matrix_i_flat.size >= lag * dimensions and matrix_j_flat.size >= lag * dimensions:
+                            try:
+                                if use_embeddings:
+                                    if matrix_i_flat.size >= lag * dimensions and matrix_j_flat.size >= lag * dimensions:
+                                        te_value = compute_MTE_embedded(X=matrix_i_flat, Y=matrix_j_flat, lag=1, dimensions=2)
+                                else:
+                                    te_value = compute_MTE(X_matrix=matrix_i_flat, Y_matrix=matrix_j_flat)
 
-                    if abs(te_Ax_to_Ay) > significant_te_threshold:
-                        G.add_edge(f'{category}_{term}_Boy', f'{category}_{term}_Eleanor', weight=te_Ax_to_Ay)
-                    if abs(te_Ay_to_Ax) > significant_te_threshold:
-                        G.add_edge(f'{category}_{term}_Eleanor', f'{category}_{term}_Boy', weight=te_Ay_to_Ax)
+                                if abs(te_value) > significant_te_threshold:
+                                    G.add_edge(f'{category}_{term}_{agent_i}', f'{category}_{term}_{agent_j}', weight=te_value)
+
+                            except ValueError as e:
+                                print(f"Error calculating TE for {category}_{term} from {agent_i} to {agent_j}: {e}")
 
 
     all_graphs.append(G)
