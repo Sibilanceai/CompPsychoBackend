@@ -361,7 +361,7 @@ save_transition_matrices(transition_matrices, 'transition_matrices.npy')
 
 
 
-# # TODO need to implement this with event dict for all levels and category combos now
+#  TODO need to add other transition analysis methods
 # print("combined_states_all_sentences: ", combined_states_all_sentences)
 # # Iterate over sentences, except the last since we're looking at transitions
 # for i, sentence in enumerate(med_context_sentences[:-1]):
