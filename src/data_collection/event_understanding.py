@@ -260,7 +260,7 @@ def extract_event_representation(text_chunk, temporal_category, hiearchical_leve
         return response, events, eventtups, character_response
     
     
-    # TODO do the other temporal categories and hiearchical levels
+  
 
     print("ERROR: Invalid temporal category and or hiearchical level")
     return None
