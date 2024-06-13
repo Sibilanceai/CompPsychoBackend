@@ -1,0 +1,19 @@
+/* style.css */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f4f4f4; /* Light grey background */
+}
+
+#cy {
+    width: 800px;
+    height: 600px;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Optional: Adds shadow for 3D effect */
+    background-color: #fff; /* White background for the graph area */
+}
