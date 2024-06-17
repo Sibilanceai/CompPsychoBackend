@@ -1,76 +1,3 @@
-// document.addEventListener('DOMContentLoaded', function () {
-//     const cy = cytoscape({
-//         container: document.getElementById('cy'),
-//         style: [
-//             {
-//                 selector: 'node',
-//                 style: {
-//                     'background-color': '#666',
-//                     'label': 'data(id)'
-//                 }
-//             },
-//             {
-//                 selector: 'edge',
-//                 style: {
-//                     'width': 'mapData(absWeight, 0, 10, 2, 6)',  // Use absWeight for width mapping
-//                     'line-color': 'mapData(absWeight, 0, 10, blue, red)', // Use absWeight for color gradient
-//                     'target-arrow-color': '#ccc',
-//                     'target-arrow-shape': 'triangle',
-//                     'curve-style': 'bezier'
-//                 }
-//             }
-//         ],
-//         layout: {
-//             name: 'grid'
-//         }
-//     });
-
-//     let currentTimestep = 0;
-//     let totalTimesteps = 0;
-
-//     // Fetch the total number of timesteps when the page loads
-//     fetch('http://127.0.0.1:5000/get_total_timesteps')
-//         .then(response => response.json())
-//         .then(data => {
-//             totalTimesteps = data.totalTimesteps;
-//             console.log(`Total timesteps available: ${totalTimesteps}`);
-//         })
-//         .catch(error => console.error('Error fetching total timesteps:', error));
-
-//     function updateGraph() {
-//         if (currentTimestep < totalTimesteps) {
-//             fetch(`http://127.0.0.1:5000/get_graph/${currentTimestep}`)
-//                 .then(response => {
-//                     if (!response.ok) throw new Error('Failed to fetch graph data');
-//                     return response.json();
-//                 })
-//                 .then(data => {
-//                     // Modify edge data to include absolute weight
-//                     console.log("Received graph data:", data);
-//                     data.elements.edges.forEach(edge => {
-//                         edge.data.absWeight = Math.abs(edge.data.weight);  // Directly modify each edge's data
-//                     });
-//                     console.log("Modified elements for visualization:", data.elements);
-
-//                     cy.elements().remove();  // Remove the existing elements
-//                     cy.add(data.elements);   // Add new elements from the fetched data with absWeight
-//                     cy.layout({ name: 'grid' }).run();  // Re-run the layout
-//                     console.log(`Updated graph for timestep ${currentTimestep}`);
-//                     currentTimestep++;  // Increment to the next timestep
-//                 })
-//                 .catch(error => console.error('Error:', error));
-//         } else {
-//             console.log("No more timesteps available.");
-//         }
-//     }
-
-//     // Event listener for the 'Next' button
-//     document.getElementById('next').addEventListener('click', function() {
-//         console.log("Stepping to the next graph");
-//         updateGraph();
-//     });
-// });
-
 document.addEventListener('DOMContentLoaded', function () {
     const cy = cytoscape({
         container: document.getElementById('cy'),
@@ -85,8 +12,11 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 selector: 'edge',
                 style: {
-                    'width': 'mapData(absWeight, 0, 10, 1, 10)', // Adjust the max weight and width accordingly
-                    'line-color': 'mapData(absWeight, 0, 10, green, yellow)', // Adjust the color mapping
+                    'width': function(edge) {
+                        // Convert negative values to positive and apply a scaling factor
+                        return 2 + 10 * Math.log10(Math.abs(edge.data('weight')) + 1); // Log scale with offset for visual distinction
+                    },
+                    'line-color': 'mapData(absWeight, 0, 10, blue, red)',
                     'target-arrow-color': '#ccc',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier'
@@ -94,14 +24,27 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         ],
         layout: {
-            name: 'grid'
+            name: 'cose',
+            idealEdgeLength: function (edge) {
+                return 100 / edge.data('absWeight');  // Adjust edge length as needed
+            },
+            nodeOverlap: 20,
+            refresh: 20,
+            fit: true,
+            padding: 30,
+            randomize: false,
+            componentSpacing: 100,
+            nodeRepulsion: 2048,
+            edgeElasticity: function (edge) {
+                return Math.max(1, edge.data('absWeight'));  // Use absolute weight for elasticity
+            },
+            nestingFactor: 5
         }
     });
 
     let currentTimestep = 0;
     let totalTimesteps = 0;
 
-    // Fetch the total number of timesteps when the page loads
     fetch('http://127.0.0.1:5000/get_total_timesteps')
         .then(response => response.json())
         .then(data => {
@@ -118,20 +61,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     return response.json();
                 })
                 .then(data => {
-                    console.log("Received graph data:", data);
-                    const updatedElements = data.elements.edges.map(edge => ({
-                        group: 'edges',
-                        data: {
-                            ...edge.data,
-                            absWeight: Math.abs(edge.data.weight) // Calculate the absolute weight for visualization
-                        }
-                    }));
+                    data.elements.edges.forEach(edge => {
+                        edge.data.absWeight = Math.abs(edge.data.weight);
+                    });
 
-                    cy.elements().remove(); // Remove the existing elements
-                    cy.add([...data.elements.nodes, ...updatedElements]); // Add nodes and updated edges to the graph
-                    cy.layout({ name: 'grid' }).run(); // Re-run the layout
+                    cy.elements().remove();
+                    cy.add(data.elements);
+                    cy.layout({ name: 'cose' }).run();
                     console.log(`Updated graph for timestep ${currentTimestep}`);
-                    currentTimestep++; // Increment to the next timestep
+                    currentTimestep++;
                 })
                 .catch(error => console.error('Error:', error));
         } else {
@@ -139,8 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Event listener for the 'Next' button
-    document.getElementById('next').addEventListener('click', function () {
+    document.getElementById('next').addEventListener('click', function() {
         console.log("Stepping to the next graph");
         updateGraph();
     });
