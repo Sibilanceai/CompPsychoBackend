@@ -1,9 +1,10 @@
-Eleanor,introduces,boy,bookstore
-boy,opens,book,fantastical realm
-boy,embarks,journey,storm subsides
-boy,returns,adventure,newfound understanding
-boy,finds,bookstore,holding book
-Subject: Eleanor,Action: laughter filled,Object: the room,Environment: intimate setting
-Subject: stories,Action: danced,Object: in the air,Environment: cozy ambiance
-Subject: the boy,Action: discovered,Object: a haven,Environment: urban setting
-Subject: the reminder,Action: served as,Object: a guiding principle,Environment: diverse cityscape
+Subject: Eleanor,Action: Introduces,Object: Boy,Environment: Bookstore
+Subject: Boy,Action: Drawn,Object: Peculiar book,Environment: Bookstore
+Subject: Eleanor,Action: Encourages,Object: Boy,Environment: Bookstore
+Subject: Boy,Action: Transported,Object: Whirlwind of colors,Environment: Unknown realm
+Subject: Boy,Action: Returns,Object: Storm,Environment: Bookstore
+Subject: Boy,Action: Reflects,Object: Gleam,Environment: Bookstore
+Subject: Eleanor,Action: Laughter filling the room,Object: Atmosphere,Environment: Room
+Subject: Stories,Action: Dancing in the air,Object: Interaction,Environment: Between them
+Subject: The boy,Action: Discovering a haven,Object: Refuge,"Environment: ""Whispers of the Past"""
+Subject: Realization,Action: Highlighting the theme,Object: Finding magic,Environment: Unexpected places
