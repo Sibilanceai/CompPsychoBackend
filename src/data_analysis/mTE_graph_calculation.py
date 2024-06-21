@@ -93,18 +93,18 @@ def create_time_lagged_embeddings(X, lag, dimensions):
     return embedded_data
 
 def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
-    print(f"Shape of X before operation: {X.shape}")
-    print(f"Shape of Y before operation: {Y.shape}")
+    # print(f"Shape of X before operation: {X.shape}")
+    # print(f"Shape of Y before operation: {Y.shape}")
     # Embedding the data with time lags
-    print("time lag start")
+    # print("time lag start")
     X_embedded = create_time_lagged_embeddings(X, lag, dimensions)
     Y_embedded = create_time_lagged_embeddings(Y, lag, dimensions)
-    print("time lag end")
+    # print("time lag end")
 
     # Computing Gram matrices using the normalized Gaussian kernel
     G_X = gaussian_kernel_normalized(X_embedded, sigma_X)
     G_Y = gaussian_kernel_normalized(Y_embedded, sigma_Y)
-    print("gaussian kernel end")
+    # print("gaussian kernel end")
     # Normalized matrices for the entropy calculation
     G_R = G_X  # Assuming G_R is based on X
     G_S = G_Y  # Assuming G_S is based on Y
@@ -114,17 +114,17 @@ def compute_MTE_embedded(X, Y, lag=1, dimensions=3, sigma_X=0.4, sigma_Y=0.4):
     G_T = (G_R * G_S) / np.trace(G_R * G_S)
     G_QR = (G_Q * G_R) / np.trace(G_Q * G_R)
     G_QT = (G_Q * G_T) / np.trace(G_Q * G_T)
-    print("compute normalized end")
+    # print("compute normalized end")
     # Compute entropies based on matrix traces
     entropy_R = -np.log(np.trace(G_R @ G_R))
     entropy_T = -np.log(np.trace(G_T @ G_T))
-    print("entropy end")
+    # print("entropy end")
     # MTE computation
     MTE_Y_to_X = (-np.log(np.trace(G_QR)) +
                   entropy_R +
                   np.log(np.trace(G_QT)) -
                   entropy_T)
-    print("MTE end")
+    # print("MTE end")
     return MTE_Y_to_X
 
 
@@ -172,3 +172,49 @@ def update_graph(X=None, Y=None,dimensions=3, lag=1):
             plt.show()
         else:
             print(f"No significant edges to display at timestep {time_index}.")
+
+
+import unittest
+
+class TestMTECalculations(unittest.TestCase):
+
+    def test_gaussian_kernel_normalized(self):
+        X = np.array([[1], [2], [3]])
+        sigma = 1.0
+        G = gaussian_kernel_normalized(X, sigma)
+        self.assertTrue(G.shape == (3, 3), "Kernel matrix should be 3x3")
+        # Ensure that the trace is not a string and convert it to a float if needed
+        trace_G = float(np.trace(G))
+        self.assertAlmostEqual(trace_G, 1.0, places=5, msg="Trace of normalized kernel matrix should be close to 1")
+
+    def test_matrix_entropy(self):
+        G = np.array([[1, 0], [0, 1]])
+        entropy = matrix_entropy(G)
+        self.assertAlmostEqual(entropy, 0.0, places=5, msg="Entropy of identity matrix should be 0")
+
+    def test_compute_MTE(self):
+        X = np.array([1, 2, 3, 4, 5])
+        Y = np.array([1, 2, 3, 4, 5])
+        sigma = 0.4
+        mte = compute_MTE(X, Y, sigma)
+        self.assertAlmostEqual(mte, 0.0, places=5, msg="MTE of identical time series should be close to 0")
+
+    def test_create_time_lagged_embeddings(self):
+        X = np.array([1, 2, 3, 4, 5])
+        lag = 1
+        dimensions = 3
+        embedded = create_time_lagged_embeddings(X, lag, dimensions)
+        expected_shape = (3, 3)  # (5 - 1 * (3 - 1), 3)
+        self.assertTrue(embedded.shape == expected_shape, "Embedded data should have correct shape")
+
+    def test_compute_MTE_embedded(self):
+        X = np.array([1, 2, 3, 4, 5])
+        Y = np.array([1, 2, 3, 4, 5])
+        lag = 1
+        dimensions = 3
+        sigma = 0.4
+        mte = compute_MTE_embedded(X, Y, lag, dimensions, sigma, sigma)
+        self.assertAlmostEqual(mte, 0.0, places=5, msg="MTE of identical time series should be close to 0")
+
+if __name__ == '__main__':
+    unittest.main()

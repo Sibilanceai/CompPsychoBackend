@@ -71,21 +71,21 @@ def load_and_classify_events():
     for (hierarchy, temporality), (sentences_path, tuples_path) in paths.items():
 
         sentences, tuples = load_events_from_csv(sentences_path, tuples_path)
-        print("loading code sentences ", sentences)
-        print("loading code tuples ", tuples)
+        # print("loading code sentences ", sentences)
+        # print("loading code tuples ", tuples)
 
         temporal_hierarchy_sentences = [' '.join(map(str, sublist)) for sublist in sentences]
         tuples_str = [' '.join(map(str, sublist)) for sublist in tuples]
         temporal_hierarchy_tuples = [tuple(sublist) for sublist in tuples]
-        print("loading code temporal_hierarchy_sentences ", sentences)
-        print("loading code temporal_hierarchy_tuples ", tuples)
+        # print("loading code temporal_hierarchy_sentences ", sentences)
+        # print("loading code temporal_hierarchy_tuples ", tuples)
         # temporal_hierarchy_sentences = sentences
         # temporal_hierarchy_tuples = tuples
         predicted_labels_BC_sent, predicted_labels_PS_sent = classify_new_events(temporal_hierarchy_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         predicted_labels_BC_tup, predicted_labels_PS_tup = classify_new_events(tuples_str, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         combined_states_all_sentences = combine_predictions(predicted_labels_BC_sent, predicted_labels_PS_sent)
         combined_states_all_tuples = combine_predictions(predicted_labels_BC_tup, predicted_labels_PS_tup)
-        print("loading code tuples: ", temporal_hierarchy_tuples)
+        # print("loading code tuples: ", temporal_hierarchy_tuples)
         
         # Store the classified events
         events[(hierarchy, temporality)] = {
@@ -104,25 +104,22 @@ def clean_character_name(name):
     name = re.sub(r'\s+', ' ', name)  # Replace multiple spaces with a single space
     return name.strip().lower()  # Trim spaces and convert to lower case
 
-def load_unique_characters(file_path):
-    characters = set()
+def load_character_aliases(file_path):
+    character_aliases = []
     try:
         with open(file_path, newline='', encoding='utf-8') as f:
             reader = csv.reader(f)
             for row in reader:
-                for name in row:
-                    # Split the entry by common delimiters (assuming names might be in a list format)
-                    parts = re.split(r'[,;]\s*', name)
-                    for part in parts:
-                        clean_name = clean_character_name(part)
-                        if clean_name:
-                            characters.add(clean_name)
+                # Process each name in the row after splitting by commas or semicolons
+                aliases = [clean_character_name(name) for name in row for name in re.split(r'[,;]\s*', name) if name]
+                if aliases:
+                    character_aliases.append(aliases)
     except FileNotFoundError:
         print(f"Error: The file {file_path} does not exist.")
     except Exception as e:
         print(f"An error occurred: {e}")
     
-    return list(characters)
+    return character_aliases
 
 
 
@@ -133,9 +130,14 @@ NUM_COG_VECTORS = 4  # This should be the number of cognitive vector categories 
 cog_vectors = {'BP': 0, 'BS': 1, 'CP': 2, 'CS': 3}
 
 # Load characters from CSV
-characters = load_unique_characters('../data_collection/characters_list.csv')
+characters = load_character_aliases('../data_collection/characters_list.csv')
 print(f"Loaded characters: {characters}")
-# characters = ['Kate', 'Jack', 'John', 'Sawyer']
+
+# Extract the first element (primary name) from each sublist using list comprehension
+primary_names = [aliases[0] for aliases in characters if aliases]
+print("Primary names list:", primary_names)
+
+# EXAMPLE: characters = ['Kate', 'Jack', 'John', 'Sawyer']
 hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
 temporality_levels = ['short-term', 'medium-term', 'long-term']
 
@@ -175,37 +177,40 @@ For PS:
 """
 # Initialization and normalize Transition matrices methods
 
-# Assume you have a way to get the subject of the event, placeholder here
 def get_subject_from_event(event_tup, characters):
     """
-    Check if the subject of the event tuple contains any of the character names in the list and return the character's name if found,
-    ensuring the returned name matches the exact format in the characters list despite variations in the event tuple.
+    Check if the subject of the event tuple contains any of the character names in the list and return the character's primary name if found,
+    ensuring the returned name matches the primary name despite variations in the event tuple.
     
     Args:
     event_tup (tuple): The event tuple where the first item is the subject.
-    characters (list): A list of character names, case-sensitive.
+    characters (list of lists): A list of lists where each sublist contains names that the same character could go by, case-sensitive.
     
     Returns:
-    str or None: The name of the character if found in the characters list; otherwise, returns None.
+    str or None: The primary name of the character if found in the characters list; otherwise, returns None.
     """
 
-    print("characters", characters)
-    print("event_tup", event_tup)
+    print("Character aliases", characters)
+    print("Event tuple", event_tup)
+    
     # Extract the subject from the first index of the tuple
     subject = event_tup[0]
 
     # Normalize the subject for robust checking (e.g., lowercasing, removing punctuation)
     normalized_subject = re.sub(r'[^\w\s]', '', subject.lower())  # Remove punctuation and convert to lower case
 
-    # Iterate over characters to find a match in the normalized subject text
-    for char in characters:
-        # Normalize character name similarly for matching
-        normalized_char = re.sub(r'[^\w\s]', '', char.lower())
+    # Iterate over each character's alias list
+    for aliases in characters:
+        # Check each alias in the sublist
+        for alias in aliases:
+            # Normalize alias similarly for matching
+            normalized_alias = re.sub(r'[^\w\s]', '', alias.lower())
+            
+            # Check if the normalized alias is in the normalized subject text
+            if normalized_alias in normalized_subject:
+                return aliases[0]  # Return the primary name from the alias list if found
 
-        # Check if the normalized character name is in the normalized subject text
-        if normalized_char in normalized_subject:
-            return char  # Return the original character name from the list if found
-    print("no match found between: ", "subject: ", normalized_subject, " and characters", characters)
+    print("No match found between: subject:", normalized_subject, "and character aliases", characters)
     return None  # Return None if no match is found
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
@@ -280,72 +285,79 @@ def simulate_behavior(start_state, transition_matrix, num_steps):
     return states
 
 
-# def process_and_update_matrices(events_dict, transition_matrices):
-#     for (hierarchy, temporality), data in events_dict.items():
-#         sentences, tuples = data['sentences'], data['tuples']
-#         combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
-#         combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
-
-#         print("tuples: ", tuples)
-#         print("sentences: ", sentences)
-#         # process sentences
-#         print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
-#         for i in range(len(tuples) - 1):
-#             # NOTE we should figure out why the lengths for tuples and sentences differ if not might need a better method maybe just getting the subject no event tuples needed.
-#             subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
-#             print(subject)
-#             if subject != None: 
-#                 prev_state = combined_states_all_sentences[i]
-#                 next_state = combined_states_all_sentences[i + 1]
-#                 update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
-            
-
-        # # Process Tuples in the same manner if needed
-        # for i in range(len(combined_states_all_tuples) - 1):
-        #     subject = get_subject_from_event(tuples[i])  # Ensure subject extraction logic matches data structure
-        #     if subject != None:
-        #         prev_state = combined_states_all_tuples[i]
-        #         next_state = combined_states_all_tuples[i + 1]
-        #         update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
-
-
 def process_and_update_matrices(events_dict, transition_matrices):
-    time_series_matrices = {char: [] for char in characters}  # Prepare a dict to hold all time-series data
+    time_series_matrices = {char: [] for char in primary_names}  # Prepare a dict to hold all time-series data
+    iter_time_dict_list = []
     for (hierarchy, temporality), data in events_dict.items():
+        iter_time = {name: 0 for name in primary_names}
         sentences, tuples = data['sentences'], data['tuples']
         combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
         combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
 
-        print("tuples: ", tuples)
-        print("sentences: ", sentences)
+        # print("tuples: ", tuples)
+        # print("sentences: ", sentences)
         print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
         
         for i in range(len(tuples) - 1):
+            print("tup range ", len(tuples) -1)
             subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
             if subject is not None: 
                 prev_state = combined_states_all_sentences[i]
                 next_state = combined_states_all_sentences[i + 1]
                 update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
+                iter_time[subject] += 1
+            # Store the current state of the matrices for this timestep
+            for char in primary_names:
+                time_series_matrices[char].append(copy.deepcopy(transition_matrices[char]))
 
-        # Store the current state of the matrices for this timestep
-        for char in characters:
-            time_series_matrices[char].append(copy.deepcopy(transition_matrices[char]))
+        print("num time step ", iter_time)        
+        iter_time_dict_list.append(iter_time)
 
-    return time_series_matrices, transition_matrices
+            
+        
+
+    return time_series_matrices, transition_matrices, iter_time_dict_list, len(time_series_matrices[primary_names[0]]), len(time_series_matrices[primary_names[1]])
 
 
-
+def find_min_value(dicts):
+    try:
+        # Extract all values from all dictionaries into a single list
+        all_values = [value for d in dicts for value in d.values() if isinstance(value, (int, float))]
+        
+        # Check if there are any values to process
+        if not all_values:
+            return None
+        
+        # Find the minimum value from all extracted values
+        min_value = min(all_values)
+        return min_value
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 # Load all events and their predictions
 event_dict, pred_labels_sent, pred_labels_tups = load_and_classify_events()
 
 # Initialize your transition matrices
-transition_matrices = initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
+transition_matrices = initialize_transition_matrices(primary_names, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
 print(transition_matrices)
 
 # Process events and update matrices
 # At the end of your data processing script, save the time series matrices
-time_series_matrices, final_matrices = process_and_update_matrices(event_dict, transition_matrices)
+time_series_matrices, final_matrices, iter_time_list, num1, num2 = process_and_update_matrices(event_dict, transition_matrices)
+
+print("length of time series matrices for agent 1: ", num1)
+print("length of time series matrices for agent 2: ", num2)
+min_time_steps = find_min_value(iter_time_list)
+print("max time we can allot: ", min_time_steps)
+
+# Path to the file where you want to save the minimum time steps
+file_path = 'min_time_steps.txt'
+
+# Write the minimum time steps to a file
+with open(file_path, 'w') as file:
+    file.write(str(min_time_steps))
+
 for character, matrices in time_series_matrices.items():
     np.save(f'transition_matrices_{character}.npy', matrices)
 
@@ -358,7 +370,13 @@ normalize_matrices(transition_matrices)
 print(transition_matrices)
 save_transition_matrices(transition_matrices, 'transition_matrices.npy')
 
-
+# Find the stationary distribution
+for char in primary_names:
+    for hierarchy in hierarchy_levels: 
+        for temporality in temporality_levels:
+            transition_matrix = transition_matrices[char][hierarchy][temporality]
+            stationary_distribution = find_stationary_distribution(transition_matrix)
+            print(f"Stationary distribution for {char} in {hierarchy} {temporality}: {stationary_distribution}")
 
 
 #  TODO need to add other transition analysis methods

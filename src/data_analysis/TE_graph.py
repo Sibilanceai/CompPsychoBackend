@@ -34,7 +34,6 @@ characters_file_path = "../characters.csv"
 agent_names = read_characters_from_csv(characters_file_path)  
 final_agent_matrices = {agent: load_final_matrices(agent) for agent in agent_names}
 
-# Example: Load time series matrices if needed
 time_series_agent_matrices = {agent: load_time_series_matrices(agent) for agent in agent_names}
 
 
@@ -196,4 +195,3 @@ def plot_network_evolution(graphs):
 
 # Call this function with all_graphs
 # plot_network_evolution(all_graphs)
-
