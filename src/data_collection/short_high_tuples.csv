@@ -1,195 +1,214 @@
-Subject: Sherlock Holmes,Action: immerses himself,Object: study of crime,Environment: Baker Street lodgings
-Subject: Dr. Watson,Action: feels desire,Object: reconnect with Holmes,Environment: Baker Street
-Subject: Holmes,Action: paces swiftly,Object: engagement with a new problem,Environment: Holmes' room
-Subject: Holmes,Action: analyzes Watson,Object: physical changes and professional activities,Environment: Holmes' room
-Subject: Holmes,Action: deduces Watson's activities,Object: recent events,Environment: Holmes' room
-Subject: Watson,Action: acknowledges Holmes' deductions,Object: deductive prowess,Environment: Holmes' room
+Subject: Sherlock Holmes,Action: immerses himself in the study of crime,Object: unsolved mysteries and abandoned cases,Environment: Baker Street lodgings
+Subject: Dr. Watson,Action: feels a strong desire to reconnect with Holmes,Object: Holmes' intense focus,Environment: Baker Street
+Subject: Holmes,Action: signals his return to work,Object: fresh challenge,Environment: Holmes' room in Baker Street
+Subject: Dr. Watson,Action: engages in conversation with Holmes,Object: personal changes and professional endeavors,Environment: Holmes' chamber in Baker Street
+Subject: Holmes,Action: observes and deduces details about Watson's activities,Object: Watson's recent actions,Environment: Holmes' chamber in Baker Street
+Subject: Dr. Watson,Action: acknowledges Holmes' deductive prowess,Object: simplicity and brilliance of reasoning process,Environment: Holmes' chamber in Baker Street
 Subject: Sherlock Holmes,Action: challenges,Object: Watson,Environment: their shared living space
-Subject: Sherlock Holmes,Action: reveals,Object: his deduction ability,Environment: their living space
-Subject: Sherlock Holmes,Action: shares,Object: mysterious note,Environment: their living space
-Subject: the note,Action: informs,Object: Holmes,Environment: their living space
-Subject: Watson,Action: expresses,Object: bewilderment,Environment: their living space
-Subject: Sherlock Holmes,Action: acknowledges,Object: mystery,Environment: their living space
-Subject: Holmes,Action: emphasizes,Object: importance of data,Environment: investigative setting
-Subject: narrator,Action: examines,Object: writing and paper,Environment: analytical atmosphere
+Subject: Holmes,Action: reveals,Object: observational skills,Environment: their living space
+Subject: Holmes,Action: presents,Object: mysterious note,Environment: their living space
+Subject: note,Action: informs,Object: Holmes,Environment: their living space
+Subject: Watson,Action: expresses,Object: intrigue,Environment: their living space
+Subject: Holmes,Action: acknowledges,Object: mystery,Environment: their living space
+Subject: Holmes,Action: emphasizes,Object: importance of data-driven theorizing,Environment: investigative setting
+Subject: narrator,Action: examines,Object: writing and paper,Environment: investigative atmosphere
 Subject: Holmes,Action: identifies,Object: paper,Environment: investigative setting
-Subject: narrator,Action: observes,Object: details on paper,Environment: analytical atmosphere
-Subject: Holmes,Action: deciphers,Object: symbols on paper,Environment: investigative setting
-Subject: investigation,Action: leads to discovery,Object: paper's origin,Environment: investigative setting
-Holmes,deduces,paper origin and nationality,German-speaking Bohemia
-Holmes,analyzes,linguistic nuances,note content
-Holmes,emphasizes,masked writer's intentions,mystery resolution
-Carriage arrival,signals,new case development,potential wealth
-Holmes,assesses,carriage value,financial implications
-Watson,considers leaving,Holmes,insists on partnership,case resolution
-Subject: The man,Action: Enters,Object: The room,Environment: Holmes' residence
-Subject: Holmes,Action: Instructs,Object: The man,Environment: Holmes' residence
-Subject: The man,Action: Questions,Object: Holmes,Environment: Holmes' residence
-Subject: Holmes,Action: Introduces,Object: Dr.,Environment: Holmes' residence
+Subject: narrator,Action: suggests,Object: paper's markings,Environment: investigative collaboration
+Subject: Holmes,Action: deciphers,Object: German elements on paper,Environment: linguistic analysis
+Subject: Holmes,Action: consults,Object: Continental Gazetteer,Environment: research setting
+Holmes,deduces,paper origin and writer nationality,German-speaking country
+Holmes,analyzes,writing style,identifying potential suspects
+Approaching horses and carriage,signaling arrival of key figure,creating suspense
+Holmes,observes,expensive brougham and occupants,hinting at visitor's importance
+Holmes,acknowledges,financial potential,emphasizing monetary motivation
+Watson,expresses desire to leave,Holmes,insists on his presence,determination to pursue the case
+Subject: Holmes,Action: Inviting,Object: the man,Environment: inside the room
+Subject: the man,Action: Signaling arrival,Object: none,Environment: outside the room
+Subject: the man,Action: Displaying attire,Object: clothing,Environment: inside the room
+Subject: Holmes,Action: Addressing,Object: the man,Environment: inside the room
+Subject: the man,Action: Speaking,Object: none,Environment: inside the room
+Subject: Holmes,Action: Introducing,Object: Dr.,Environment: inside the room
 Holmes,insist,both Watson and Count Von Kramm,consulting room
-Count Von Kramm,reveal identity,King of Bohemia,consulting room
-King of Bohemia,seek Holmes' help incognito,consulting room
-Holmes,deduce,King's identity and issue with Irene Adler,consulting room
-King of Bohemia,explain lack of legal proof,compromising letters,consulting room
-King,expresses concern,indiscretion and marriage,private conversation
-King,reflects,past actions and growth,private setting
-King's advisors,discuss,photograph recovery,confidential meeting
-King's associates,recount,failed retrieval attempts,secret operation
-King,acknowledges,threat from Irene Adler,private conversation
-King,experiences anxiety,impending threat,private setting
-Subject: Holmes,Action: Receiving instructions,Object: King's request for help,Environment: Baker Street
-Subject: King,Action: Providing information,Object: Details about Irene Adler,Environment: Baker Street
-Subject: Holmes,Action: Planning,Object: Investigation strategy,Environment: Baker Street
-Subject: Holmes,Action: Receiving funds,Object: Money for expenses,Environment: Baker Street
-Subject: Holmes,Action: Noting address,Object: Irene Adler's residence,Environment: Baker Street
-Subject: Holmes,Action: Setting appointment,Object: Meeting with Watson,Environment: Baker Street
-Sherlock Holmes,decides to chase,lovely woman,street
-Sherlock Holmes,hails,cab driver,street
-Sherlock Holmes,arrives,church,late
-Sherlock Holmes,witnesses,altar,church
-Sherlock Holmes,assists,wedding ceremony,church
-Sherlock Holmes,learns,marriage license issue,church
-Sherlock Holmes,prevents legal issues,bridegroom,church
-Sherlock Holmes,receives token,bride,church
-Sherlock Holmes,realizes threat,plans,church
-Sherlock Holmes,observes,couple,church
-Sherlock Holmes,decides,meal and discussion,lodging
-Sherlock Holmes,enlists support,Dr. Watson,lodging
-Sherlock Holmes,prepares to reveal plan,Dr. Watson,lodging
+Count Von Kramm,reveal,need for secrecy,consulting room
+Count Von Kramm,disclose,true identity,consulting room
+Holmes,encourage,Count Von Kramm,consulting room
+King of Bohemia,admit,royal status,consulting room
+King of Bohemia,explain,need for discretion,consulting room
+Holmes,listen,King of Bohemia's case,consulting room
+Holmes,retrieve,information about Irene Adler,consulting room
+Holmes,analyze,lack of evidence,consulting room
+King,express concern,indiscretion and compromised position,private meeting
+King,reflect,past actions and consequences,private meeting
+King and advisors,emphasize urgency,photograph recovery,private meeting
+King and advisors,suggest buying or stealing,photograph,private meeting
+King and advisors,discuss failed strategies,photograph retrieval,private meeting
+Holmes,find amusement,challenging problem,private meeting
+King,emphasize threat,Irene Adler's actions,private meeting
+King and advisors,discuss marriage sabotage risk,photograph threat,private meeting
+Subject: The King,Action: Expresses confidence,Objects: Irene Adler,photograph,Environment: Discussion in a private setting
+Subject: Holmes,Action: Confirms delay,Objects: Photograph,Environment: Planning discussion
+Subject: The King,Action: Grants carte blanche,Objects: Expenses,photograph,Environment: Financial transaction
+Subject: Holmes,Action: Records address,Objects: Irene Adler,Environment: Note-taking
+Subject: Holmes,Action: Bids farewell,Objects: The King,Watson,Environment: Departure scene
+Subject: Watson,Action: Waits,Objects: Holmes,Environment: Baker Street
+Subject: Holmes,Action: Recounts activities,Objects: Morning events,Environment: Reunion at Baker Street
+Narrator,Listen and Ponder,Information from Cabmen at Serpentine-mews
+Narrator,Contemplate,Focus Decision
+Mr. Norton,Arrive,Briony Lodge
+Mr. Norton,Pace and Talk,Inside Briony Lodge
+Mr. Norton,Instruct and Rush,Outside Briony Lodge
+Woman,Exit and Enter,Landau
+Narrator,Consider Following,Mr. Norton and Woman
+Events at Briony Lodge,Raise Questions,Relationship Dynamics
+Sherlock Holmes,Contemplates,Running to Church of St. Monica,Street
+Holmes,Enters Cab,Church of St. Monica,Street
+Holmes,Observes,Wedding Ceremony,Church
+Holmes,Becomes Witness,Irene Adler's Wedding,Church
+Holmes,Plans,Preventing Couple's Departure,Church
+Holmes,Considers,Woman's Park Meeting,Church
+Holmes,Eats,Prepares for Tasks,Lodging
+Holmes,Seeks Cooperation,Covert Operation,Lodging
+Holmes,Discusses Plan,Time Sensitivity,Lodging
+Subject: Protagonist,Action: Instructed,Object: Neutrality,Environment: Preparing for potential conflict
+Subject: Protagonist,Action: Questioning,Object: Role clarification,Environment: Uncertainty about upcoming events
+Subject: Protagonist,Action: Reminded,Object: Non-interference,Environment: Anticipation of negative outcomes
+Subject: Protagonist,Action: Accepting,Object: Neutrality directive,Environment: Resignation to upcoming challenges
 Holmes,instructs,Watson,indoors
 Watson,agrees,Holmes,indoors
 Holmes,explains,mechanics of smoke-rocket,indoors
 Holmes,transforms appearance,Nonconformist clergyman,indoors
-Holmes and Watson,arrive,Serpentine Avenue,outdoors
-Holmes,discusses,importance of photograph,outdoors
-Holmes and Watson,deliberate,photograph's location,outdoors
+Holmes,Watson,leave Baker Street,outdoors
+Holmes,observes,surroundings of Briony Lodge,outdoors
+Holmes,discusses,strategic implications of photograph,outdoors
+Holmes,considers,likely locations of photograph,outdoors
 Holmes,instructs,companion,at Briony Lodge
 Holmes,dismisses,concern,at Briony Lodge
-Holmes,decides,not to search,at Briony Lodge
-Bystanders,react,to carriage arrival,outside Briony Lodge
-Men,fight,over opening door,outside Briony Lodge
-Holmes,intervenes,in scuffle,outside Briony Lodge
-Irene Adler,shows concern,for Holmes,outside Briony Lodge
-Narrator,observes,events,from a distance
-Lady,attends,to Holmes,in Briony Lodge
-Narrator,struggles,with conflicting feelings,in Briony Lodge
+Holmes,plans,to have lady show object,at Briony Lodge
+various individuals,engage in altercation,at Briony Lodge
+Holmes,intervenes,to protect lady,at Briony Lodge
+Irene Adler,shows concern for injured man,at Briony Lodge
+Holmes,carried into Briony Lodge,laid out in principal room
+narrator,observes events,reflects on feelings,at Briony Lodge
+narrator,remains committed to mission,at Briony Lodge
+narrator,retrieves smoke-rocket,at Briony Lodge
 Holmes,orchestrates,false fire alarm,woman's house
 Holmes,uses,red paint ruse,gain access
-woman,rushes,to hidden photograph,sitting room
-Holmes,observes,woman's reaction,false alarm
+Holmes,manipulates,woman,reveal photograph's location
 Holmes,plans,return with King,retrieve photograph
-King of Bohemia,arrives,eager to retrieve photograph
-Holmes and King,depart,Briony Lodge,confront Irene Adler
-Holmes,reveals,Irene Adler's marriage,strategic considerations
-Holmes,hopes,Irene Adler's love for husband,prevent interference
-King of Bohemia,expresses regret,Irene Adler,Serpentine Avenue
-Sherlock Holmes,shocked,Irene Adler,Briony Lodge
-Holmes,retrieves,photograph and letter,drawing-room
-Irene Adler,reveals,knowledge and escape plan,letter
-King of Bohemia,admires,Irene Adler,aftermath
-Holmes,reflects,Irene Adler,respect
-Holmes,engages,new case,unconventional mysteries
-Holmes,introduces,Mr. Wilson,peculiar cases
-Holmes and Watson,delve into,Mr. Wilson's narrative,peculiar case
-Subject: Sherlock Holmes,Action: requests,Object: Wilson,Environment: consulting room
-Subject: Mr. Jabez Wilson,Action: retrieves,Object: newspaper,Environment: consulting room
-Subject: Sherlock Holmes,Action: observes,Object: Wilson's appearance,Environment: consulting room
-Subject: Mr. Jabez Wilson,Action: expresses,Object: surprise,Environment: consulting room
-Subject: Sherlock Holmes,Action: explains,Object: deductions,Environment: consulting room
-Subject: Mr. Jabez Wilson,Action: reacts,Object: Holmes' deductions,Environment: consulting room
-Subject: Sherlock Holmes,Action: reflects,Object: reputation,Environment: consulting room
-Subject: Mr. Jabez Wilson,Action: locates,Object: advertisement,Environment: consulting room
-Subject: He,Action: Commented,Object: Location,Environment: Remote area
-Subject: Unknown,Action: Choosing,Object: Location,Environment: Remote area
-Subject: Characters,Action: Embarking,Object: Journey,Environment: Remote area
-Subject: Group,Action: Exploring,Object: Surroundings,Environment: Remote area
-Subject: Protagonist,Action: Reflecting,Object: Decision,Environment: Remote area
+King of Bohemia,arrives,eager to retrieve photograph,Holmes informs
+Holmes,King,depart for Briony Lodge,continue quest
+Holmes,reveals,Irene Adler's marriage to Norton,potential impact
+Holmes,expresses hope,Adler's marriage,alleviate complications
+Subject: The King of Bohemia,Action: expresses regret,Object: Irene Adler,Environment: Serpentine Avenue
+Subject: The elderly woman,Action: informs,Object: Sherlock Holmes,Environment: Briony Lodge
+Subject: Sherlock Holmes,Action: rushes,Object: drawing-room,Environment: Briony Lodge
+Subject: Sherlock Holmes,Action: retrieves,Object: photograph and letter,Environment: Briony Lodge
+Subject: The King of Bohemia,Action: admires,Object: Irene Adler,Environment: Briony Lodge
+Subject: Sherlock Holmes,Action: declines,Object: reward,Environment: Briony Lodge
+Subject: Sherlock Holmes,Action: leaves,Object: photograph,Environment: Briony Lodge
+Subject: Sherlock Holmes,Action: requests,Object: Wilson,Environment: Sherlock's residence
+Subject: Wilson,Action: retrieves,Object: newspaper,Environment: Sherlock's residence
+Subject: Holmes,Action: observes and deduces,Object: Wilson,Environment: Sherlock's residence
+Subject: Wilson,Action: expresses and questions,Object: Holmes,Environment: Sherlock's residence
+Subject: Holmes,Action: explains,Object: deductions,Environment: Sherlock's residence
+Subject: Wilson,Action: acknowledges and admits,Object: Holmes,Environment: Sherlock's residence
+Subject: Holmes,Action: reflects and hints,Object: reputation,Environment: Sherlock's residence
+Subject: Wilson,Action: locates,Object: advertisement,Environment: Sherlock's residence
+Subject: The man,Action: expressed curiosity,Object: about the location's remoteness,Environment: off the beaten track
+Subject: The man,Action: hinted at a desire,Object: for exploration and adventure,Environment: off the beaten track
+Subject: The man,Action: indicated a broader theme,Object: of seeking new experiences,Environment: off the beaten track
 Subject: Mr. Wilson,Action: share,Object: details about himself and the advertisement,Environment: interrogation setting
 Subject: the doctor,Action: note down,Object: paper and date,Environment: interrogation setting
-Subject: the paper,Action: identified,Object: The Morning Chronicle of April 27,1890,Environment: interrogation setting
-Subject: timeframe,Action: revealed,Object: two months ago,Environment: interrogation setting
-Subject: significance,Action: acknowledged,Object: timing of the advertisement,Environment: interrogation setting
+Subject: the doctor,Action: identify,Object: newspaper and date,Environment: interrogation setting
+Subject: the doctor,Action: acknowledge,Object: timeframe,Environment: interrogation setting
+Subject: the doctor,Action: recognize,Object: significance of the advertisement,Environment: interrogation setting
 Jabez Wilson,Describes,Pawnbroker business,Coburg Square
 Sherlock Holmes,Inquires,Vincent Spaulding,Work ethic
 Mr. Wilson,Acknowledges,Vincent's faults,Diligent worker
-Mr. Wilson,Confirms,Vincent Spaulding,Household
-Vincent Spaulding,Expresses desire,Red-headed man,League opportunity
+Mr. Wilson,Reveals,Vincent Spaulding and young girl,Household dynamics
+Narrative,Shifts,Advertisement,Vincent's desire
+Vincent Spaulding,Expresses wish,Mr. Wilson,Financial opportunities
+Mr. Wilson,Questions,Significance,Red-headed man
+Narrative,Leaves reader intrigued,Vincent's aspiration,League's mystery
 Subject: Mr. Wilson,Action: learns about the League,Object: the League of the Red-headed Men,Environment: at home
-Subject: Mr. Wilson,Action: decides to pursue the vacancy,Object: the League vacancy,Environment: at home
-Subject: Mr. Wilson and Vincent Spaulding,Action: venture out to the League's address,Object: the League's address,Environment: city streets
-Subject: Mr. Wilson,Action: considers giving up,Object: continuing the application process,Environment: crowded city streets
-Subject: Mr. Wilson and Spaulding,Action: navigate through the crowd,Object: the office,Environment: crowded office building
-Subject: Mr. Wilson,Action: impresses Mr. Ross,Object: suitability for the vacancy,Environment: office
-Subject: Mr. Wilson,Action: undergoes a hair inspection,Object: successful candidate status,Environment: office
-Subject: Mr. Wilson,Action: reveals marital status,Object: disappointment from Mr. Ross,Environment: office
+Subject: Mr. Wilson,Action: decides to pursue the vacancy,Object: the League of the Red-headed Men,Environment: at home
+Subject: Mr. Wilson and Vincent Spaulding,Action: venture out to the League's address,Object: League of the Red-headed Men,Environment: Fleet Street
+Subject: Mr. Wilson and Vincent Spaulding,Action: navigate through the crowd,Object: reaching the League's office,Environment: crowded street
+Subject: Mr. Wilson,Action: enters the office,Object: meeting Mr. Duncan Ross,Environment: League's office
+Subject: Mr. Wilson,Action: undergoes a physical examination,Object: confirming eligibility,Environment: League's office
+Subject: Mr. Wilson,Action: faces disappointment,Object: being unmarried,Environment: League's office
 Subject: Mr. Wilson,Action: Expresses disappointment,Object: Fund's purpose,Environment: Conversation with Mr. Holmes
-Subject: Mr. Wilson,Action: Worries,Object: Vacancy,Environment: Conversation with Mr. Holmes
-Subject: Mr. Holmes,Action: Makes exception,Object: Mr. Wilson's bachelor status,Environment: Conversation with Mr. Wilson
-Subject: Mr. Wilson,Action: Mentions existing business,Object: Obstacle,Environment: Conversation with Vincent Spaulding
-Subject: Mr. Wilson,Action: Inquires about working hours,Object: Schedule,Environment: Conversation about new duties
-Subject: Mr. Wilson,Action: Considers business timing,Object: Schedule alignment,Environment: Reflection on work hours
-Subject: Mr. Wilson,Action: Acknowledges assistant's reliability,Object: Assistant's support,Environment: Confidence in new duties
-Subject: Mr. Jabez Wilson,Action: Offered a job,Object: Copying out the Encyclopaedia Britannica,Environment: Duncan Ross's office
-Subject: Mr. Jabez Wilson,Action: Agreed to the job,Object: New position,Environment: Duncan Ross's office
-Subject: Mr. Jabez Wilson,Action: Doubting the job,Object: Legitimacy of the task,Environment: Personal contemplation
-Subject: Vincent Spaulding,Action: Trying to cheer up,Object: Mr. Jabez Wilson,Environment: Mr. Jabez Wilson's home
-Subject: Mr. Jabez Wilson,Action: Deciding to investigate,Object: Purchasing supplies,Environment: Local store
-Subject: Mr. Jabez Wilson,Action: Arriving at Pope's Court,Object: Starting the job,Environment: Pope's Court
+Subject: Mr. Wilson,Action: Believes,Object: Vacancy,Environment: Conversation with Mr. Holmes
+Subject: Mr. Holmes,Action: Acknowledges,Object: Mr. Wilson's bachelorhood,Environment: Conversation with Mr. Wilson
+Subject: Mr. Wilson,Action: Mentions,Object: Existing business,Environment: Conversation with Mr. Holmes
+Subject: Vincent Spaulding,Action: Offers help,Object: Mr. Wilson's business,Environment: Conversation with Mr. Wilson
+Subject: Mr. Wilson,Action: Inquires,Object: Working hours,Environment: Conversation with Mr. Holmes
+Subject: Mr. Wilson,Action: Notes advantage,Object: Working hours,Environment: Conversation with Mr. Holmes
+Subject: Mr. Jabez Wilson,Action: Offered,Object: Mysterious job,Environment: Office setting
+Subject: Duncan Ross,Action: Revealed,Object: Task details,Environment: Office setting
+Subject: Mr. Jabez Wilson,Action: Agreed,Object: Starting the job,Environment: Office setting
+Subject: Duncan Ross,Action: Congratulated,Object: Mr. Jabez Wilson,Environment: Office setting
+Subject: Mr. Jabez Wilson,Action: Left,Object: Office,Environment: Office setting
+Subject: Mr. Jabez Wilson,Action: Reflected,Object: Job offer,Environment: Personal space
+Subject: Mr. Jabez Wilson,Action: Decided,Object: Investigate,Environment: Personal space
+Subject: Mr. Jabez Wilson,Action: Prepared,Object: Materials,Environment: Personal space
+Subject: Mr. Jabez Wilson,Action: Arrived,Object: Pope's Court,Environment: Pope's Court
 Mr. Duncan Ross,overseeing,protagonist's work,office environment
 Protagonist,writing,various topics,office environment
-Mr. Duncan Ross,reducing visits,protagonist's work,office environment
-Protagonist,dedication to work,fear of losing job,office environment
-Protagonist,shock at league dissolution,office environment
-Sherlock Holmes and protagonist,finding humor,client's dismay,office environment
-Subject: Holmes,Action: questioning,Object: Wilson,Environment: Holmes' office
-Subject: Wilson,Action: revealing,Object: Spaulding,Environment: Holmes' office
-Subject: Holmes,Action: inquiring,Object: Wilson,Environment: Holmes' office
-Subject: Holmes,Action: noting,Object: Spaulding's description,Environment: Holmes' office
-Subject: Holmes,Action: expressing excitement,Object: Spaulding's pierced ears,Environment: Holmes' office
-Subject: Holmes,Action: contemplating,Object: Spaulding's characteristics,Environment: Holmes' office
-Subject: Holmes,Action: confirming,Object: Spaulding's presence,Environment: Holmes' office
-Subject: Holmes,Action: concluding,Object: conversation,Environment: Holmes' office
-Subject: Holmes,Action: discussing,Object: case,Environment: Holmes' office
-Subject: Watson,Action: questioning,Object: Holmes,Environment: Holmes' office
-Subject: Sherlock Holmes,Action: requests silence,Object: to smoke,Environment: sitting in a chair
-Subject: Sherlock Holmes,Action: immerses in thought,Object: pipe,Environment: in a contemplative posture
-Subject: Sherlock Holmes,Action: springs up,Object: - ,Environment: in a sudden movement
-Subject: Sherlock Holmes,Action: mentions event,Object: musical performance,Environment: discussing leisure activities
-Subject: Sherlock Holmes,Action: invites Watson,Object: to attend the event,Environment: planning a social outing
-Subject: Dr. Watson,Action: expresses availability,Object: for the outing,Environment: discussing free time
-Subject: Sherlock Holmes,Action: instructs Watson,Object: to put on hat,Environment: preparing for the outing
+Protagonist,following routine,work schedule,office environment
+Protagonist,discovering,locked door and note,office environment
+Sherlock Holmes and protagonist,sharing laughter,unexpected news,office environment
+Subject: Holmes,Action: questions,Object: Wilson,Environment: Holmes' office
+Subject: Wilson,Action: explains,Object: Holmes,Environment: Holmes' office
+Subject: Holmes,Action: observes,Object: Spaulding,Environment: Holmes' office
+Subject: Holmes,Action: expresses,Object: excitement/thoughts,Environment: Holmes' office
+Subject: Holmes,Action: questions,Object: Wilson,Environment: Holmes' office
+Subject: Holmes,Action: assures,Object: Wilson,Environment: Holmes' office
+Subject: Holmes,Action: discusses,Object: Watson,Environment: Holmes' office
+Subject: Holmes,Action: acknowledges,Object: complexity/importance,Environment: Holmes' office
+Subject: Sherlock Holmes,Action: requests silence,Object: three-pipe problem,Environment: sitting room
+Subject: Dr. Watson,Action: observes,Object: Holmes,Environment: sitting room
+Subject: Sherlock Holmes,Action: decides,Object: attending concert,Environment: sitting room
+Subject: Sherlock Holmes,Action: invites,Object: Dr. Watson,Environment: sitting room
+Subject: Dr. Watson,Action: agrees,Object: accompanying Holmes,Environment: sitting room
 Subject: Sherlock Holmes,Action: decides to explore,Object: Saxe-Coburg Square,Environment: mystery-solving context
-Subject: Holmes,Action: observes surroundings,Object: Saxe-Coburg Square,Environment: contrasting urban settings
-Subject: Holmes,Action: inspects shop,Object: assistant's trousers,Environment: investigative setting
-Subject: Holmes,Action: converses with assistant,Object: information,Environment: undercover investigation
-Subject: Holmes,Action: analyzes street layout,Object: sequence of shops,Environment: urban navigation context
+Subject: Sherlock Holmes,Action: observes surroundings,Object: pawnbroker's surroundings,Environment: investigative setting
+Subject: Sherlock Holmes,Action: interacts with assistant,Object: Mr. Wilson's assistant,Environment: information-gathering scenario
+Subject: Sherlock Holmes,Action: focuses on trousers,Object: assistant's trousers,Environment: observation-driven context
+Subject: Sherlock Holmes,Action: emphasizes observation,Object: conversation,Environment: analytical mindset
+Subject: Sherlock Holmes,Action: explores areas,Object: behind Saxe-Coburg Square,Environment: investigative exploration
+Subject: Sherlock Holmes,Action: utilizes hobby,Object: sequence of houses,Environment: knowledge acquisition
 Subject: Sherlock Holmes,Action: suggests taking a break,Object: Dr. Watson,Environment: post-work setting
 Subject: Dr. Watson,Action: observes Holmes,Object: Holmes,Environment: St. James's Hall
-Subject: Sherlock Holmes,Action: informs Dr. Watson,Object: Dr. Watson,Environment: post-music setting
-Subject: Sherlock Holmes,Action: requests Dr. Watson's help,Object: Dr. Watson,Environment: post-discussion setting
-Subject: Sherlock Holmes,Action: advises Dr. Watson,Object: Dr. Watson,Environment: pre-nighttime setting
-Subject: Sherlock Holmes,Action: disappears,Object: Dr. Watson,Environment: post-discussion setting
+Subject: Sherlock Holmes,Action: informs Dr. Watson,Object: Dr. Watson,Environment: post-music concert setting
+Subject: Sherlock Holmes,Action: requests help,Object: Dr. Watson,Environment: post-discussion setting
+Subject: Sherlock Holmes,Action: advises carrying revolver,Object: Dr. Watson,Environment: pre-mission preparation
+Subject: Sherlock Holmes,Action: disappears,Object: Dr. Watson,Environment: crowded street
+Subject: Dr. Watson,Action: reflects,Object: interactions with Holmes,Environment: personal contemplation
+Subject: Dr. Watson,Action: contemplates expedition,Object: upcoming mission,Environment: personal contemplation
 Holmes,gather,team,Baker Street
-Jones,express confidence,Holmes' abilities,Baker Street
+Jones,express confidence,Holmes,Baker Street
 Holmes,reveal stakes,pursuit,Baker Street
-Group,discuss John Clay,criminal skills,Baker Street
-Holmes,express hope,introduce Merryweather to John Clay,Baker Street
-Holmes,instructs,Merryweather,dark lantern
-Holmes,positions,companions,surprise attack
-group,waits,tense silence
-hand,emerges,floor
-Holmes,apprehends,intruder
-Jones,detains,intruder
-Holmes,disarms,intruder
-Holmes,engages,intruder
-Jones,secures,intruder
-intruder,asserts,identity
-Jones,escorts,intruder
-intruder,exits,Jones
+Group,discuss John Clay,criminal abilities,Baker Street
+Holmes,express hope,introduce,Baker Street
+Subject: Mr. Merryweather and Holmes,Action: decide to cover,Object: dark lantern,Environment: dark vault
+Subject: Holmes,Action: instructs,Object: group,Environment: dark vault
+Subject: Holmes,Action: emphasizes,Object: need for caution,Environment: dark vault
+Subject: Holmes,Action: positions himself,Object: crate,Environment: dark vault
+Subject: Watson and others,Action: conceal themselves,Object: - ,Environment: dark vault
+Subject: Holmes,Action: plans to flash,Object: light,Environment: dark vault
+Subject: group,Action: waits,Object: - ,Environment: dark vault
+Subject: hand,Action: emerges,Object: - ,Environment: dark vault
+Subject: intruders,Action: create hole and enter,Object: vault,Environment: dark vault
+Subject: Holmes,Action: apprehends,Object: intruder,Environment: dark vault
+Subject: Jones,Action: attempts to restrain,Object: intruder,Environment: dark vault
+Subject: Holmes,Action: disarms,Object: intruder,Environment: dark vault
+Subject: Holmes and group,Action: secure captured intruder,Object: - ,Environment: dark vault
+Subject: John Clay,Action: acknowledges defeat and surrenders,Object: - ,Environment: dark vault
+Subject: John Clay and detective,Action: escorted away,Object: - ,Environment: dark vault
 Holmes,deduces,motive behind Red-headed League scheme,pawnbroker's shop
 Holmes,investigates,assistant's cellar activities,tunneling operation
 Holmes,confirms suspicions,worn knees of assistant,burrowing work
 Holmes,identifies,City and Suburban Bank,target
-Holmes,predicts,timing of robbery attempt,League offices closure
-Holmes,impresses,Watson,deduction skills
-Holmes,reflects,intellectual stimulation,escape from mundanity
+Holmes,predicts,timing of robbery,League offices closure
+Holmes,prevents,bank robbery,deduction skills
