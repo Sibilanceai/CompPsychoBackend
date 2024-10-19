@@ -1,6 +1,7 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+
 import pandas as pd
 from mTE_graph_calculation import compute_MTE_embedded, compute_MTE, silvermans_rule
 import csv
@@ -10,40 +11,53 @@ from scipy.interpolate import interp1d
 from itertools import combinations
 from joblib import Parallel, delayed
 
+
+
 # Function to interpolate matrices
 def interpolate_matrices(agent_matrices, agent_time_stamps, all_time_points):
     """
     Interpolates a series of transition matrices to a common set of time points.
 
     Args:
-        agent_matrices (list): List of transition matrices for an agent.
+        agent_matrices (list of dicts): List of transition matrices for an agent.
         agent_time_stamps (list): Corresponding timestamps for the matrices.
         all_time_points (list): Common set of time points to interpolate to.
 
     Returns:
-        list: Interpolated transition matrices aligned to all_time_points.
+        list of dicts: Interpolated transition matrices aligned to all_time_points.
     """
-    interpolated_matrices = []
-    # Flatten matrices for interpolation
-    flattened_matrices = [matrix.flatten() for matrix in agent_matrices]
-    flattened_matrices = np.array(flattened_matrices)
+    # Get the categories and terms from the first matrix
+    categories = list(agent_matrices[0].keys())
+    terms = list(agent_matrices[0][categories[0]].keys())
 
-    # Interpolate each element in the flattened matrix
-    interpolated_flat_matrices = []
-    for i in range(flattened_matrices.shape[1]):
-        element_series = flattened_matrices[:, i]
-        f = interp1d(agent_time_stamps, element_series, kind='linear', fill_value='extrapolate')
-        interpolated_element = f(all_time_points)
-        interpolated_flat_matrices.append(interpolated_element)
+    # Initialize interpolated_matrices as a list of dicts for each time point
+    interpolated_matrices = [{} for _ in range(len(all_time_points))]
 
-    # Reconstruct interpolated matrices
-    interpolated_flat_matrices = np.array(interpolated_flat_matrices).T  # Transpose back
-    num_elements = agent_matrices[0].size
-    matrix_shape = agent_matrices[0].shape
+    for category in categories:
+        for term in terms:
+            # Collect matrices over time for the specific category and term
+            matrices = [matrix[category][term] for matrix in agent_matrices]
+            # Flatten the matrices for interpolation
+            flattened_matrices = [m.flatten() for m in matrices]
+            flattened_matrices = np.array(flattened_matrices)
 
-    for i in range(len(all_time_points)):
-        interpolated_matrix = interpolated_flat_matrices[i].reshape(matrix_shape)
-        interpolated_matrices.append(interpolated_matrix)
+            # Interpolate each element in the flattened matrices
+            interpolated_flat_matrices = []
+            for i in range(flattened_matrices.shape[1]):
+                element_series = flattened_matrices[:, i]
+                f = interp1d(agent_time_stamps, element_series, kind='linear', fill_value='extrapolate')
+                interpolated_element = f(all_time_points)
+                interpolated_flat_matrices.append(interpolated_element)
+
+            # Reconstruct interpolated matrices
+            interpolated_flat_matrices = np.array(interpolated_flat_matrices).T  # Transpose back
+            matrix_shape = matrices[0].shape
+
+            for idx, t in enumerate(all_time_points):
+                if category not in interpolated_matrices[idx]:
+                    interpolated_matrices[idx][category] = {}
+                interpolated_matrix = interpolated_flat_matrices[idx].reshape(matrix_shape)
+                interpolated_matrices[idx][category][term] = interpolated_matrix
 
     return interpolated_matrices
 
@@ -170,20 +184,25 @@ def generate_all_graphs():
         # Define the function to compute TE for a pair of agents
         def compute_te_for_pair(args):
             source_agent, target_agent, category, term, time = args
+            W = 50  # Set your desired window size
+            start_time = max(0, time - W + 1)
+            time_indices = range(start_time, time + 1)
+
             matrix_i = np.array([
                 interpolated_time_series_agent_matrices[source_agent][t][category][term]
-                for t in range(time + 1)
+                for t in time_indices
             ])
             matrix_j = np.array([
                 interpolated_time_series_agent_matrices[target_agent][t][category][term]
-                for t in range(time + 1)
+                for t in time_indices
             ])
 
             # Flatten matrices
-            matrix_i_flat = matrix_i.flatten()
-            matrix_j_flat = matrix_j.flatten()
+            matrix_i_flat = matrix_i.reshape(len(time_indices), -1)
+            matrix_j_flat = matrix_j.reshape(len(time_indices), -1)
 
-            if matrix_i_flat.size >= lag * dimensions and matrix_j_flat.size >= lag * dimensions:
+            # Proceed with TE computation using the flattened matrices
+            if matrix_i_flat.shape[0] >= lag * dimensions and matrix_j_flat.shape[0] >= lag * dimensions:
                 try:
                     if use_embeddings:
                         te_value = compute_MTE_embedded(
@@ -203,7 +222,7 @@ def generate_all_graphs():
             return None
 
         # Compute TE values in parallel
-        results = Parallel(n_jobs=-1)(delayed(compute_te_for_pair)(args) for args in tasks)
+        results = Parallel(n_jobs=4, batch_size='auto')(delayed(compute_te_for_pair)(args) for args in tasks)
 
         # Add edges to the graph based on TE values
         for res in results:

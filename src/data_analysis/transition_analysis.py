@@ -1,4 +1,6 @@
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 import sys
 import os
 
@@ -9,6 +11,7 @@ from eventlevelprotonet import ProtoNet, get_contextual_embedding, compute_proto
 from sklearn.cluster import KMeans
 import networkx as nx
 from scipy.stats import ttest_ind, mannwhitneyu
+import scipy.linalg
 from scipy.linalg import eig  # For spectral analysis
 import csv
 import re
@@ -18,6 +21,103 @@ import logging
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Data visuals
+
+def plot_expected_visits(expected_visits, states, steps, title, filename):
+    total_visits = expected_visits.sum(axis=0)
+    plt.figure(figsize=(8, 6))
+    plt.bar(states, total_visits, color='purple')
+    plt.title(f"{title} (First {steps} Steps)")
+    plt.xlabel('States')
+    plt.ylabel('Expected Number of Visits')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_entropy_rates(entropy_rates, title, filename):
+    keys = list(entropy_rates.keys())
+    values = [entropy_rates[k] for k in keys]
+    plt.figure(figsize=(12, 6))
+    plt.bar(keys, values, color='green')
+    plt.xticks(rotation=90)
+    plt.title(title)
+    plt.ylabel('Entropy Rate')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_eigenvalues(eigenvalues, title, filename):
+    plt.figure(figsize=(6, 6))
+    plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue')
+    plt.title(title)
+    plt.xlabel('Real Part')
+    plt.ylabel('Imaginary Part')
+    plt.grid(True)
+    plt.axhline(0, color='black', linewidth=0.5)
+    plt.axvline(0, color='black', linewidth=0.5)
+    unit_circle = plt.Circle((0, 0), 1, color='red', fill=False, linestyle='--')
+    plt.gca().add_artist(unit_circle)
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_mfpt_heatmap(mfpt, states, title, filename):
+    mfpt_display = np.copy(mfpt)
+    mfpt_display[np.isinf(mfpt_display)] = np.nan  # Replace inf with NaN for visualization
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(mfpt_display, annot=True, fmt='.2f', xticklabels=states, yticklabels=states, cmap='coolwarm')
+    plt.title(title)
+    plt.xlabel('To State')
+    plt.ylabel('From State')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_state_transition_graph(tm, states, title, filename):
+    G = nx.DiGraph()
+    n_states = len(states)
+    for i in range(n_states):
+        for j in range(n_states):
+            if tm[i, j] > 0:
+                G.add_edge(states[i], states[j], weight=tm[i, j])
+
+    pos = nx.circular_layout(G)
+    edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+    edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in G.edges(data=True)}
+    
+    plt.figure(figsize=(8, 6))
+    nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='lightblue')
+    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20, width=2, edge_color='gray')
+    nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='red')
+    
+    plt.title(title)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_stationary_distribution(stationary, states, title, filename):
+    plt.figure(figsize=(8, 6))
+    plt.bar(states, stationary, color='skyblue')
+    plt.title(title)
+    plt.xlabel('States')
+    plt.ylabel('Stationary Probability')
+    plt.ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_transition_matrix(tm, states, title, filename):
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(tm, annot=True, fmt='.2f', xticklabels=states, yticklabels=states, cmap='viridis')
+    plt.title(title)
+    plt.xlabel('To State')
+    plt.ylabel('From State')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
 
 # Updated character list with aliases
 characters = [
@@ -203,12 +303,19 @@ def normalize_matrices(matrices):
     for character_matrices in matrices.values():
         for hierarchy_matrices in character_matrices.values():
             for temporality_matrix in hierarchy_matrices.values():
-                row_sums = temporality_matrix.sum(axis=1, keepdims=True)
-                # Avoid division by zero
-                row_sums[row_sums == 0] = 1
-                temporality_matrix[:] = temporality_matrix / row_sums
                 # Ensure no negative values
                 temporality_matrix[temporality_matrix < 0] = 0
+
+                row_sums = temporality_matrix.sum(axis=1, keepdims=True)
+                zero_row_indices = np.where(row_sums == 0)[0]
+
+                # Set zero rows to uniform distribution
+                for idx in zero_row_indices:
+                    temporality_matrix[idx] = np.full(temporality_matrix.shape[1], 1.0 / temporality_matrix.shape[1])
+
+                # Recompute row sums after handling zero rows
+                row_sums = temporality_matrix.sum(axis=1, keepdims=True)
+                temporality_matrix[:] = temporality_matrix / row_sums
 
 def save_transition_matrices(matrices, filepath):
     with open(filepath, 'wb') as f:
@@ -310,7 +417,6 @@ for char in primary_names:
 
 # Additional Analysis Methods
 
-import scipy.linalg
 
 def entropy_rate(transition_matrix):
     """
@@ -331,7 +437,11 @@ def mean_first_passage_time(P):
     n = P.shape[0]
     stationary = find_stationary_distribution(P)
     I = np.eye(n)
-    Z = np.linalg.inv(I - P + np.outer(np.ones(n), stationary))
+    try:
+        Z = np.linalg.inv(I - P + np.outer(np.ones(n), stationary))
+    except np.linalg.LinAlgError:
+        print("Singular matrix encountered. The Markov chain may not be irreducible.")
+        return None
     mfpt = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
@@ -339,7 +449,7 @@ def mean_first_passage_time(P):
                 if stationary[j] > 0:
                     mfpt[i, j] = (Z[j, j] - Z[i, j]) / stationary[j]
                 else:
-                    mfpt[i, j] = np.inf  # Set to infinity or handle as needed
+                    mfpt[i, j] = np.inf
     return mfpt
 
 def absorption_probabilities(transition_matrix, absorbing_states):
@@ -367,15 +477,17 @@ def absorption_probabilities(transition_matrix, absorbing_states):
     return absorption_probs
 
 def simulate_behavior(start_state, transition_matrix, num_steps):
-    """
-    Simulate a sequence of states starting from start_state.
-    """
     current_state = start_state
     states = [current_state]
     for _ in range(num_steps):
+        probs = transition_matrix[current_state]
+        prob_sum = probs.sum()
+        if not np.isclose(prob_sum, 1):
+            logger.error(f"Transition probabilities for state {current_state} do not sum to 1: sum={prob_sum}")
+            raise ValueError(f"Transition probabilities for state {current_state} do not sum to 1.")
         current_state = np.random.choice(
             range(len(transition_matrix)),
-            p=transition_matrix[current_state]
+            p=probs
         )
         states.append(current_state)
     return states
@@ -422,8 +534,9 @@ for char in primary_names:
             if not np.any(tm):
                 logger.warning(f"Transition matrix for {char} in {hierarchy} {temporality} is empty.")
 
-# Updated analysis section
-# Your analysis code
+
+entropy_rates = {}
+# analysis section
 for char in primary_names:
     for hierarchy in hierarchy_levels:
         for temporality in temporality_levels:
@@ -435,9 +548,44 @@ for char in primary_names:
                 entropy = entropy_rate(tm)
                 print(f"Entropy rate for {char} in {hierarchy} {temporality}: {entropy}")
                 mfpt = mean_first_passage_time(tm)
-                print(f"Mean First Passage Times for {char} in {hierarchy} {temporality}:\n{mfpt}")
+                if mfpt is not None:
+                    print(f"Mean First Passage Times for {char} in {hierarchy} {temporality}:\n{mfpt}")
+                else:
+                    print(f"MFPT is None for {char} in {hierarchy} {temporality}, skipping MFPT analysis.")
 
-                # Additional Analysis Methods
+
+                # Collect entropy rates
+                key = f"{char} - {hierarchy} {temporality}"
+                entropy_rates[key] = entropy
+
+                # Visualization Titles and Filenames
+                base_title = f"{char.capitalize()} - {hierarchy.capitalize()} {temporality.capitalize()}"
+                tm_title = f"Transition Matrix - {base_title}"
+                tm_filename = f"transition_matrix_{char}_{hierarchy}_{temporality}.png"
+                sd_title = f"Stationary Distribution - {base_title}"
+                sd_filename = f"stationary_distribution_{char}_{hierarchy}_{temporality}.png"
+                graph_title = f"State Transition Graph - {base_title}"
+                graph_filename = f"state_transition_graph_{char}_{hierarchy}_{temporality}.png"
+                mfpt_title = f"Mean First Passage Times - {base_title}"
+                mfpt_filename = f"mfpt_{char}_{hierarchy}_{temporality}.png"
+                eigen_title = f"Eigenvalues - {base_title}"
+                eigen_filename = f"eigenvalues_{char}_{hierarchy}_{temporality}.png"
+
+                # Plot Transition Matrix Heatmap
+                plot_transition_matrix(tm, states, tm_title, tm_filename)
+
+                # Plot Stationary Distribution Bar Chart
+                plot_stationary_distribution(stationary, states, sd_title, sd_filename)
+
+                # Plot State Transition Graph
+                plot_state_transition_graph(tm, states, graph_title, graph_filename)
+
+                # Plot Mean First Passage Times Heatmap
+                if mfpt is not None:
+                    # Plot Mean First Passage Times Heatmap
+                    plot_mfpt_heatmap(mfpt, states, mfpt_title, mfpt_filename)
+                else:
+                    print(f"Skipping MFPT heatmap for {char} in {hierarchy} {temporality} due to None value.")
 
                 # 1. Communicating Classes and Classification of States
                 G = nx.DiGraph(tm)
@@ -468,14 +616,14 @@ for char in primary_names:
                 eigenvectors = eigenvectors[:, idx]
                 print(f"Eigenvalues for {char} in {hierarchy} {temporality}: {eigenvalues}")
 
+                # Plot Eigenvalues
+                plot_eigenvalues(eigenvalues, eigen_title, eigen_filename)
+
                 # Spectral Gap
                 spectral_gap = abs(eigenvalues[0]) - abs(eigenvalues[1])
                 print(f"Spectral gap for {char} in {hierarchy} {temporality}: {spectral_gap}")
 
                 # 3. Mixing Time Estimation
-                # Mixing time is the time until the distribution is close to stationary distribution
-                # This is complex; here, we provide an approximate mixing time
-                # For ergodic chains, mixing time is related to the second-largest eigenvalue
                 if abs(eigenvalues[1]) < 1:
                     mixing_time = int(np.ceil(np.log(0.01) / np.log(abs(eigenvalues[1]))))
                     print(f"Approximate mixing time for {char} in {hierarchy} {temporality}: {mixing_time}")
@@ -483,8 +631,6 @@ for char in primary_names:
                     print(f"Cannot compute mixing time for {char} in {hierarchy} {temporality}")
 
                 # 4. Expected Number of Visits
-                # For ergodic chains, the expected number of visits is infinite
-                # Instead, compute expected visits in first n steps
                 n_steps = 10
                 expected_visits = np.zeros((len(states), len(states)))
                 P_power = np.identity(len(states))
@@ -493,8 +639,9 @@ for char in primary_names:
                     expected_visits += P_power
                 print(f"Expected number of visits in first {n_steps} steps for {char} in {hierarchy} {temporality}:\n{expected_visits}")
 
+                # Optional: You can plot expected visits here if desired
+
                 # 5. First Return Times
-                # For recurrent states, mean recurrence time is 1 / stationary_probability
                 recurrence_times = {}
                 for i, state in enumerate(states):
                     if stationary[i] > 0:
@@ -504,31 +651,41 @@ for char in primary_names:
                 print(f"Mean recurrence times for {char} in {hierarchy} {temporality}:\n{recurrence_times}")
 
                 # 6. Hitting Times
-                # Compute expected hitting times using fundamental matrix for ergodic chains
-                # For simplicity, use mean first passage times computed earlier
                 print(f"Hitting times (mean first passage times) for {char} in {hierarchy} {temporality}:\n{mfpt}")
 
                 # 7. Commute Times
-                # Commute time between states i and j is mfpt[i, j] + mfpt[j, i]
-                commute_times = mfpt + mfpt.T
-                print(f"Commute times between states for {char} in {hierarchy} {temporality}:\n{commute_times}")
+                if mfpt is not None:
+                    # Hitting Times and Commute Times
+                    print(f"Hitting times (mean first passage times) for {char} in {hierarchy} {temporality}:\n{mfpt}")
+                    commute_times = mfpt + mfpt.T
+                    print(f"Commute times between states for {char} in {hierarchy} {temporality}:\n{commute_times}")
+                else:
+                    print(f"Cannot compute hitting times and commute times for {char} in {hierarchy} {temporality} due to None MFPT.")
 
             else:
                 print(f"No data for {char} in {hierarchy} {temporality}.")
+
+# After completing the loop, plot the entropy rates
+entropy_title = "Entropy Rates Across Configurations"
+entropy_filename = "entropy_rates.png"
+plot_entropy_rates(entropy_rates, entropy_title, entropy_filename)
+
 # Updated t-test or Mann-Whitney U test
 # Handle statistical tests appropriately
 group1_features = []
 group2_features = []
 
 for idx, char in enumerate(primary_names):
-    tm = transition_matrices[char][hierarchy][temporality]
-    if np.any(tm):
-        normalize_matrices({char: {hierarchy: {temporality: tm}}})
-        entropy = entropy_rate(tm)
-        if idx % 2 == 0:
-            group1_features.append(entropy)
-        else:
-            group2_features.append(entropy)
+    for hierarchy in hierarchy_levels:
+        for temporality in temporality_levels:
+            tm = transition_matrices[char][hierarchy][temporality]
+            if np.any(tm):
+                normalize_matrices({char: {hierarchy: {temporality: tm}}})
+                entropy = entropy_rate(tm)
+                if idx % 2 == 0:
+                    group1_features.append(entropy)
+                else:
+                    group2_features.append(entropy)
 
 if len(group1_features) > 1 and len(group2_features) > 1:
     t_stat, p_val = ttest_ind(group1_features, group2_features, equal_var=False)
