@@ -8,12 +8,37 @@ sys.path.insert(0, os.path.abspath('../data_annotation'))
 from eventlevelprotonet import ProtoNet, get_contextual_embedding, compute_prototypes, create_episode, train_proto_net, validate_proto_net, classify_new_events, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS
 from sklearn.cluster import KMeans
 import networkx as nx
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, mannwhitneyu
+from scipy.linalg import eig  # For spectral analysis
 import csv
 import re
 import copy
+import logging
 
-# Construct the path relative to transition_analysis.py
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Updated character list with aliases
+characters = [
+    ['sherlock', 'holmes', 'sherlock holmes', 'protagonist'],
+    ['watson', 'dr watson', 'doctor watson', 'narrator'],
+    ['irene adler', 'adler', 'woman', 'female character'],
+    ['king of bohemia', 'king', 'king of bohemia'],
+    ['jabez wilson', 'mr wilson', 'wilson'],
+    ['john clay', 'clay', 'vincent spaulding', 'spaulding'],
+    ['duncan ross', 'mr duncan ross'],
+    ['godfrey norton', 'mr godfrey norton', 'male character'],
+    ['jones', 'mr jones', 'detective jones'],
+    ['merryweather', 'mr merryweather'],
+    ['count von kramm'],
+    # Add more characters as needed
+]
+
+# Define the list of states corresponding to your transition matrix indices
+states = ['BP', 'BS', 'CP', 'CS']  
+
+
 def get_file_path(hierarchy, temporality):
     return f'../data_collection/events_{hierarchy.replace(" ", "_")}_{temporality.replace(" ", "_")}.csv'
 
@@ -69,23 +94,15 @@ def load_and_classify_events():
     
     # Load events for each combination of hierarchy and temporality
     for (hierarchy, temporality), (sentences_path, tuples_path) in paths.items():
-
         sentences, tuples = load_events_from_csv(sentences_path, tuples_path)
-        # print("loading code sentences ", sentences)
-        # print("loading code tuples ", tuples)
-
         temporal_hierarchy_sentences = [' '.join(map(str, sublist)) for sublist in sentences]
         tuples_str = [' '.join(map(str, sublist)) for sublist in tuples]
         temporal_hierarchy_tuples = [tuple(sublist) for sublist in tuples]
-        # print("loading code temporal_hierarchy_sentences ", sentences)
-        # print("loading code temporal_hierarchy_tuples ", tuples)
-        # temporal_hierarchy_sentences = sentences
-        # temporal_hierarchy_tuples = tuples
+
         predicted_labels_BC_sent, predicted_labels_PS_sent = classify_new_events(temporal_hierarchy_sentences, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         predicted_labels_BC_tup, predicted_labels_PS_tup = classify_new_events(tuples_str, proto_net_BC, proto_net_PS, prototype_tensor_BC, prototype_tensor_PS)
         combined_states_all_sentences = combine_predictions(predicted_labels_BC_sent, predicted_labels_PS_sent)
         combined_states_all_tuples = combine_predictions(predicted_labels_BC_tup, predicted_labels_PS_tup)
-        # print("loading code tuples: ", temporal_hierarchy_tuples)
         
         # Store the classified events
         events[(hierarchy, temporality)] = {
@@ -94,9 +111,7 @@ def load_and_classify_events():
             'combined_predicted_labels_sentences': combined_states_all_sentences,
             'combined_predicted_labels_tuples': combined_states_all_tuples
         }
-    return events, combined_states_all_sentences, combined_states_all_tuples
-
-
+    return events
 
 def clean_character_name(name):
     # Strip unwanted characters and fix common formatting issues
@@ -121,11 +136,8 @@ def load_character_aliases(file_path):
     
     return character_aliases
 
-
-
-# TODO need to make functions to make these 
 # Define the size of the matrices
-NUM_COG_VECTORS = 4  # This should be the number of cognitive vector categories behavioral states you have
+NUM_COG_VECTORS = 4  # Number of cognitive vector categories
 # Cognitive vectors mapping
 cog_vectors = {'BP': 0, 'BS': 1, 'CP': 2, 'CS': 3}
 
@@ -133,11 +145,11 @@ cog_vectors = {'BP': 0, 'BS': 1, 'CP': 2, 'CS': 3}
 characters = load_character_aliases('../data_collection/characters_list.csv')
 print(f"Loaded characters: {characters}")
 
-# Extract the first element (primary name) from each sublist using list comprehension
+# Extract the primary names
 primary_names = [aliases[0] for aliases in characters if aliases]
 print("Primary names list:", primary_names)
 
-# EXAMPLE: characters = ['Kate', 'Jack', 'John', 'Sawyer']
+# Hierarchy and Temporality Levels
 hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
 temporality_levels = ['short-term', 'medium-term', 'long-term']
 
@@ -151,91 +163,52 @@ bc_ps_to_state = {
 
 def combine_predictions(predicted_labels_BC, predicted_labels_PS):
     combined_states = []
-    # Handle the case for single values directly
     if np.isscalar(predicted_labels_BC) and np.isscalar(predicted_labels_PS):
         return [bc_ps_to_state.get((predicted_labels_BC, predicted_labels_PS), 'Unknown')]
 
-    # Assuming labels are arrays where each position corresponds to a label for an event
     for bc_label, ps_label in zip(predicted_labels_BC, predicted_labels_PS):
-        combined_state = bc_ps_to_state.get((bc_label, ps_label), 'Unknown')  # Handle unknown combinations
+        combined_state = bc_ps_to_state.get((bc_label, ps_label), 'Unknown')
         combined_states.append(combined_state)
     return combined_states
 
-
-
-
-# Initialize your transition matrices dictionary for each character as before
-"""
-Predicted Labels Key:
-For BC:
-0: Blast (B)
-1: Consume (C)
-
-For PS:
-0: Play (P)
-1: Sleep (S)
-"""
-# Initialization and normalize Transition matrices methods
-
 def get_subject_from_event(event_tup, characters):
-    """
-    Check if the subject of the event tuple contains any of the character names in the list and return the character's primary name if found,
-    ensuring the returned name matches the primary name despite variations in the event tuple.
-    
-    Args:
-    event_tup (tuple): The event tuple where the first item is the subject.
-    characters (list of lists): A list of lists where each sublist contains names that the same character could go by, case-sensitive.
-    
-    Returns:
-    str or None: The primary name of the character if found in the characters list; otherwise, returns None.
-    """
-
-    print("Character aliases", characters)
-    print("Event tuple", event_tup)
-    
-    # Extract the subject from the first index of the tuple
     subject = event_tup[0]
+    # Remove 'Subject:' prefix if present, and strip whitespace
+    subject = re.sub(r'^Subject:\s*', '', subject).strip()
+    # Remove 'The', 'A', 'An' from the beginning
+    subject = re.sub(r'^(The|A|An)\s+', '', subject, flags=re.I)
+    normalized_subject = re.sub(r'[^\w\s]', '', subject.lower()).strip()
 
-    # Normalize the subject for robust checking (e.g., lowercasing, removing punctuation)
-    normalized_subject = re.sub(r'[^\w\s]', '', subject.lower())  # Remove punctuation and convert to lower case
-
-    # Iterate over each character's alias list
     for aliases in characters:
-        # Check each alias in the sublist
         for alias in aliases:
-            # Normalize alias similarly for matching
-            normalized_alias = re.sub(r'[^\w\s]', '', alias.lower())
-            
-            # Check if the normalized alias is in the normalized subject text
-            if normalized_alias in normalized_subject:
-                return aliases[0]  # Return the primary name from the alias list if found
-
-    print("No match found between: subject:", normalized_subject, "and character aliases", characters)
-    return None  # Return None if no match is found
+            normalized_alias = re.sub(r'[^\w\s]', '', alias.lower()).strip()
+            if normalized_alias in normalized_subject or normalized_subject in normalized_alias:
+                return aliases[0]
+    logger.warning(f"No match found for subject '{subject}' in event: {event_tup}")
+    return None
 
 def initialize_transition_matrices(characters, hierarchy_levels, temporality_levels, num_vectors):
     matrices = {}
-    for character in characters:
+    for character in primary_names:
         character_matrices = {}
         for hierarchy in hierarchy_levels:
             hierarchy_matrices = {}
             for temporality in temporality_levels:
-                # Initialize a zero matrix for each combination of hierarchy and temporality
                 hierarchy_matrices[temporality] = np.zeros((num_vectors, num_vectors))
             character_matrices[hierarchy] = hierarchy_matrices
         matrices[character] = character_matrices
     return matrices
 
-
-
 def normalize_matrices(matrices):
     for character_matrices in matrices.values():
         for hierarchy_matrices in character_matrices.values():
-            for temporality_matrices in hierarchy_matrices.values():
-                row_sums = temporality_matrices.sum(axis=1, keepdims=True)
+            for temporality_matrix in hierarchy_matrices.values():
+                row_sums = temporality_matrix.sum(axis=1, keepdims=True)
+                # Avoid division by zero
                 row_sums[row_sums == 0] = 1
-                temporality_matrices[:] = temporality_matrices / row_sums
-
+                temporality_matrix[:] = temporality_matrix / row_sums
+                # Ensure no negative values
+                temporality_matrix[temporality_matrix < 0] = 0
 
 def save_transition_matrices(matrices, filepath):
     with open(filepath, 'wb') as f:
@@ -245,132 +218,87 @@ def load_transition_matrices(filepath):
     with open(filepath, 'rb') as f:
         return np.load(f, allow_pickle=True).item()
 
-
-def categorize_event_with_langchain(event_description):
-    # Interaction with LangChain to categorize the event
-    # This is pseudo-code; need to replace it with actual LangChain interaction code
-    category = "BS"  # Placeholder for the actual category determined by LangChain
-    return category
-
-
-# Update transition matrices based on an event
 def update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors):
-    # Convert states to matrix indices
     prev_vector = cog_vectors.get(prev_state)
     next_vector = cog_vectors.get(next_state)
 
-    # Validate indices
     if prev_vector is not None and next_vector is not None:
-        # Update the specified matrix
         transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
-
 
 def find_stationary_distribution(transition_matrix):
     eigenvalues, eigenvectors = np.linalg.eig(transition_matrix.T)
-    stationary = eigenvectors[:, np.isclose(eigenvalues, 1)]
-    stationary_distribution = stationary / stationary.sum()
-    return stationary_distribution.real.flatten()
-
-
-def flatten_matrices(matrices):
-    return [matrix.flatten() for matrix in matrices]
-
-
-def simulate_behavior(start_state, transition_matrix, num_steps):
-    current_state = start_state
-    states = [current_state]
-    for _ in range(num_steps):
-        current_state = np.random.choice(a=range(len(transition_matrix)), p=transition_matrix[current_state])
-        states.append(current_state)
-    return states
-
-hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
-temporality_levels = ['short-term', 'medium-term', 'long-term']
+    idx = np.argmin(np.abs(eigenvalues - 1))
+    stationary = np.real(eigenvectors[:, idx]).flatten()
+    stationary = stationary / np.sum(stationary)
+    # Ensure non-negative
+    stationary[stationary < 0] = 0
+    stationary = stationary / np.sum(stationary)
+    return stationary
 
 def process_and_update_matrices(events_dict, transition_matrices):
-    time_series_matrices = {char: [] for char in primary_names}  # Prepare a dict to hold all time-series data
-    iter_time_dict_list = []
+    time_series_matrices = {char: [] for char in primary_names}
+    time_stamps = {char: [] for char in primary_names}
+    iter_time = {name: 0 for name in primary_names}
+
+    all_events = []
     for (hierarchy, temporality), data in events_dict.items():
-        iter_time = {name: 0 for name in primary_names}
         sentences, tuples = data['sentences'], data['tuples']
-        combined_states_all_sentences = data.get('combined_predicted_labels_sentences', [])
-        combined_states_all_tuples = data.get('combined_predicted_labels_tuples', [])
+        combined_states = data.get('combined_predicted_labels_sentences', [])
+        for i in range(len(tuples)):
+            all_events.append({
+                'sentence': sentences[i],
+                'tuple': tuples[i],
+                'combined_state': combined_states[i],
+                'hierarchy': hierarchy,
+                'temporality': temporality,
+                'index': i
+            })
 
-        # print("tuples: ", tuples)
-        # print("sentences: ", sentences)
-        print("compare tuple and sentence list lengths: ", "tuples: ", len(tuples), "sentences: ", len(sentences))
-        
-        for i in range(len(tuples) - 1):
-            print("tup range ", len(tuples) -1)
-            subject = get_subject_from_event(tuples[i], characters=characters)  # Ensure subject extraction logic matches data structure
-            if subject is not None: 
-                prev_state = combined_states_all_sentences[i]
-                next_state = combined_states_all_sentences[i + 1]
-                update_transition_matrix(subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors)
-                iter_time[subject] += 1
-            # Store the current state of the matrices for this timestep
-            for char in primary_names:
-                time_series_matrices[char].append(copy.deepcopy(transition_matrices[char]))
+    # Optionally sort all_events if you have timestamps
 
-        print("num time step ", iter_time)        
-        iter_time_dict_list.append(iter_time)
+    for i in range(len(all_events) - 1):
+        current_event = all_events[i]
+        next_event = all_events[i + 1]
 
-            
-        
+        subject = get_subject_from_event(current_event['tuple'], characters=characters)
+        if subject is not None:
+            prev_state = current_event['combined_state']
+            next_state = next_event['combined_state']
+            hierarchy = current_event['hierarchy']
+            temporality = current_event['temporality']
+            update_transition_matrix(
+                subject, hierarchy, temporality, prev_state, next_state, transition_matrices, cog_vectors
+            )
+            iter_time[subject] += 1
+            time_stamps[subject].append(iter_time[subject])
+            time_series_matrices[subject].append(copy.deepcopy(transition_matrices[subject]))
+        else:
+            pass
 
-    return time_series_matrices, transition_matrices, iter_time_dict_list, len(time_series_matrices[primary_names[0]]), len(time_series_matrices[primary_names[1]])
-
-
-def find_min_value(dicts):
-    try:
-        # Extract all values from all dictionaries into a single list
-        all_values = [value for d in dicts for value in d.values() if isinstance(value, (int, float))]
-        
-        # Check if there are any values to process
-        if not all_values:
-            return None
-        
-        # Find the minimum value from all extracted values
-        min_value = min(all_values)
-        return min_value
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
+    return time_series_matrices, transition_matrices, time_stamps
 
 # Load all events and their predictions
-event_dict, pred_labels_sent, pred_labels_tups = load_and_classify_events()
+event_dict = load_and_classify_events()
 
 # Initialize your transition matrices
 transition_matrices = initialize_transition_matrices(primary_names, hierarchy_levels, temporality_levels, NUM_COG_VECTORS)
-print(transition_matrices)
 
 # Process events and update matrices
-# At the end of your data processing script, save the time series matrices
-time_series_matrices, final_matrices, iter_time_list, num1, num2 = process_and_update_matrices(event_dict, transition_matrices)
+time_series_matrices, final_matrices, time_stamps = process_and_update_matrices(event_dict, transition_matrices)
 
-print("length of time series matrices for agent 1: ", num1)
-print("length of time series matrices for agent 2: ", num2)
-min_time_steps = find_min_value(iter_time_list)
-print("max time we can allot: ", min_time_steps)
-
-# Path to the file where you want to save the minimum time steps
-file_path = 'min_time_steps.txt'
-
-# Write the minimum time steps to a file
-with open(file_path, 'w') as file:
-    file.write(str(min_time_steps))
-
-for character, matrices in time_series_matrices.items():
-    np.save(f'transition_matrices_{character}.npy', matrices)
-
-# Save final matrices for each character
-for character, matrix in final_matrices.items():
-    np.save(f'transition_matrices_final_{character}.npy', matrix)
+# Save time series matrices and timestamps for each character
+for character in primary_names:
+    np.save(f'transition_matrices_{character}.npy', time_series_matrices[character])
+    np.save(f'time_stamps_{character}.npy', time_stamps[character])  # Save timestamps
 
 # Normalize and save matrices
 normalize_matrices(transition_matrices)
-print(transition_matrices)
 save_transition_matrices(transition_matrices, 'transition_matrices.npy')
+
+# Save final matrices for each character
+for character in primary_names:
+    final_matrix = transition_matrices[character]
+    np.save(f'transition_matrices_final_{character}.npy', final_matrix)
 
 # Find the stationary distribution
 for char in primary_names:
@@ -380,99 +308,233 @@ for char in primary_names:
             stationary_distribution = find_stationary_distribution(transition_matrix)
             print(f"Stationary distribution for {char} in {hierarchy} {temporality}: {stationary_distribution}")
 
+# Additional Analysis Methods
 
-#  TODO need to add other transition analysis methods
-# print("combined_states_all_sentences: ", combined_states_all_sentences)
-# # Iterate over sentences, except the last since we're looking at transitions
-# for i, sentence in enumerate(med_context_sentences[:-1]):
-#     subject = get_subject_from_event(sentence)  # Extract subject from the sentence
-    
-#     # Ensure we have the next state to form a transition
-#     if i < len(combined_states_all_sentences) - 1:
-#         prev_state = combined_states_all_sentences[i]
-#         next_state = combined_states_all_sentences[i + 1]
+import scipy.linalg
 
-#         # Convert states to matrix indices
-#         prev_vector = cog_vectors[prev_state]
-#         next_vector = cog_vectors[next_state]
+def entropy_rate(transition_matrix):
+    """
+    Calculate the entropy rate of a Markov chain given its transition matrix.
+    """
+    stationary_dist = find_stationary_distribution(transition_matrix)
+    entropy = 0.0
+    for i in range(len(transition_matrix)):
+        for j in range(len(transition_matrix)):
+            if transition_matrix[i][j] > 0 and stationary_dist[i] > 0:
+                entropy -= stationary_dist[i] * transition_matrix[i][j] * np.log2(transition_matrix[i][j])
+    return entropy
 
-#         # Update matrices for all hierarchical levels and temporal categories
-#         for hierarchy in hierarchy_levels:
-#             for temporality in temporality_levels:
-#                 transition_matrices[subject][hierarchy][temporality][prev_vector, next_vector] += 1
+def mean_first_passage_time(P):
+    """
+    Compute the mean first passage times for an ergodic Markov chain.
+    """
+    n = P.shape[0]
+    stationary = find_stationary_distribution(P)
+    I = np.eye(n)
+    Z = np.linalg.inv(I - P + np.outer(np.ones(n), stationary))
+    mfpt = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                if stationary[j] > 0:
+                    mfpt[i, j] = (Z[j, j] - Z[i, j]) / stationary[j]
+                else:
+                    mfpt[i, j] = np.inf  # Set to infinity or handle as needed
+    return mfpt
 
-# # After updating the matrices, normalize them and save for persistence
-# normalize_matrices(transition_matrices)  # Normalize your matrices as implemented previously
-# save_transition_matrices(transition_matrices, 'transition_matrices.npy')  # Save your matrices as implemented previously
+def absorption_probabilities(transition_matrix, absorbing_states):
+    n = transition_matrix.shape[0]
+    transient_states = [i for i in range(n) if i not in absorbing_states]
 
-# bp_index = cog_vectors['BP']  # cog_vectors['BP'] should give you the index for 'BP'
-# # Print out the matrices to check them
-# for char in characters:
-#     print(f"Transition matrices for {char} in 'context-specific' 'medium-term':")
-#     print(transition_matrices[char]['context-specific']['medium-term'])
-#     print(f"Transition from 'BP' for {char} in 'context-specific' 'medium-term':")
-#     bp_transitions = transition_matrices[char]['context-specific']['medium-term'][bp_index]
-#     print(bp_transitions)
+    if not transient_states:
+        logger.warning("No transient states in the transition matrix.")
+        return None
 
-# # Save the transition matrices if needed
-# np.save('bob_matrix.npy', transition_matrices['Bob']['context-specific']['medium-term'])
+    Q = transition_matrix[np.ix_(transient_states, transient_states)]
+    R = transition_matrix[np.ix_(transient_states, absorbing_states)]
+    try:
+        N = np.linalg.inv(np.eye(len(transient_states)) - Q)
+    except np.linalg.LinAlgError:
+        logger.warning("Singular matrix encountered while computing fundamental matrix N.")
+        return None
+    B = N @ R
+    # Create full absorption probability matrix
+    absorption_probs = np.zeros((n, len(absorbing_states)))
+    absorption_probs[np.ix_(transient_states, range(len(absorbing_states)))] = B
+    # Absorption probabilities for absorbing states are 1 for themselves
+    for idx, state in enumerate(absorbing_states):
+        absorption_probs[state, idx] = 1.0
+    return absorption_probs
 
-# # ... Additional code for loading and using the matrices
-# # Example usage for a specific character, hierarchical level, and temporal category
-# char = 'Bob'
-# hierarchy = 'context-specific'
-# temporality = 'medium-term'
+def simulate_behavior(start_state, transition_matrix, num_steps):
+    """
+    Simulate a sequence of states starting from start_state.
+    """
+    current_state = start_state
+    states = [current_state]
+    for _ in range(num_steps):
+        current_state = np.random.choice(
+            range(len(transition_matrix)),
+            p=transition_matrix[current_state]
+        )
+        states.append(current_state)
+    return states
 
-# # Ensure the matrix is normalized
-# normalize_matrices(transition_matrices)  # Assuming this normalizes all matrices
+# Example usage of additional methods
 
-# # Get the transition matrix
-# transition_matrix = transition_matrices[char][hierarchy][temporality]
+# Choose a character, hierarchy, and temporality for analysis
+char = primary_names[0]  # e.g., 'alice'
+hierarchy = 'context-specific'
+temporality = 'medium-term'
 
-# # Find the stationary distribution
-# stationary_distribution = find_stationary_distribution(transition_matrix)
-# print(f"Stationary distribution for {char} in {hierarchy} {temporality}: {stationary_distribution}")
+# Get the transition matrix for the chosen character and levels
+transition_matrix = transition_matrices[char][hierarchy][temporality]
 
+# Ensure the matrix is normalized
+normalize_matrices({char: {hierarchy: {temporality: transition_matrix}}})
 
+# Calculate entropy rate
+entropy = entropy_rate(transition_matrix)
+print(f"Entropy rate for {char} in {hierarchy} {temporality}: {entropy}")
 
-# from scipy.stats import ttest_ind
+# Calculate mean first passage times
+mfpt_matrix = mean_first_passage_time(transition_matrix)
+print(f"Mean First Passage Times for {char} in {hierarchy} {temporality}:\n{mfpt_matrix}")
 
-# # Assuming `group1_features` and `group2_features` are arrays of features derived from transition matrices
-# t_stat, p_val = ttest_ind(group1_features, group2_features)
+# Calculate absorption probabilities (assuming state 3 is absorbing)
+absorbing_states = [3]  # Assuming 'CS' is an absorbing state
+abs_prob = absorption_probabilities(transition_matrix, absorbing_states)
+print(f"Absorption probabilities to state {absorbing_states} for {char}:\n{abs_prob}")
 
+# Simulate behavior
+start_state = 0  # Starting from 'BP'
+num_steps = 10
+simulated_states = simulate_behavior(start_state, transition_matrix, num_steps)
+state_names = ['BP', 'BS', 'CP', 'CS']
+simulated_state_names = [state_names[state] for state in simulated_states]
+print(f"Simulated states for {char}: {simulated_state_names}")
 
-# 6. Absorption Probabilities
-# Calculate the probability of reaching an absorbing state from other states.
+# After processing events
+for char in primary_names:
+    for hierarchy in hierarchy_levels:
+        for temporality in temporality_levels:
+            tm = transition_matrices[char][hierarchy][temporality]
+            if not np.any(tm):
+                logger.warning(f"Transition matrix for {char} in {hierarchy} {temporality} is empty.")
 
-# This is complex and requires setting up a modified transition matrix that identifies absorbing states.
-# Implement a method to modify the transition matrix and calculate absorption probabilities.
+# Updated analysis section
+# Your analysis code
+for char in primary_names:
+    for hierarchy in hierarchy_levels:
+        for temporality in temporality_levels:
+            tm = transition_matrices[char][hierarchy][temporality]
+            if np.any(tm):
+                normalize_matrices({char: {hierarchy: {temporality: tm}}})
+                stationary = find_stationary_distribution(tm)
+                print(f"Stationary distribution for {char} in {hierarchy} {temporality}: {stationary}")
+                entropy = entropy_rate(tm)
+                print(f"Entropy rate for {char} in {hierarchy} {temporality}: {entropy}")
+                mfpt = mean_first_passage_time(tm)
+                print(f"Mean First Passage Times for {char} in {hierarchy} {temporality}:\n{mfpt}")
 
-# # Pseudo-code
-# for matrix in transition_matrices:
-#     identify_transient_and_recurrent_states(matrix)
-#     # Analyze matrix structure to classify states
+                # Additional Analysis Methods
 
-# def entropy_rate(transition_matrix):
-#     # Calculate entropy rate from the transition probabilities
-#     stationary_dist = find_stationary_distribution(transition_matrix)
-#     entropy_rate = -np.sum(stationary_dist * np.sum(transition_matrix * np.log(transition_matrix), axis=1))
-#     return entropy_rate
+                # 1. Communicating Classes and Classification of States
+                G = nx.DiGraph(tm)
+                components = list(nx.strongly_connected_components(G))
+                print(f"Communicating classes for {char} in {hierarchy} {temporality}: {components}")
 
+                # Classify states as recurrent or transient
+                recurrent_states = []
+                transient_states = []
+                for component in components:
+                    is_recurrent = True
+                    for state in component:
+                        if not np.isclose(tm[state, state], 1.0):
+                            is_recurrent = False
+                            break
+                    if is_recurrent:
+                        recurrent_states.extend(component)
+                    else:
+                        transient_states.extend(component)
+                print(f"Recurrent states: {recurrent_states}")
+                print(f"Transient states: {transient_states}")
 
-# def mean_first_passage_time(transition_matrix, state_a, state_b):
-#     # Calculate MFPT from state_a to state_b
-#     pass  # Implement MFPT calculation
+                # 2. Spectral Analysis
+                eigenvalues, eigenvectors = eig(tm.T)
+                # Sort eigenvalues and eigenvectors
+                idx = eigenvalues.argsort()[::-1]
+                eigenvalues = eigenvalues[idx]
+                eigenvectors = eigenvectors[:, idx]
+                print(f"Eigenvalues for {char} in {hierarchy} {temporality}: {eigenvalues}")
 
+                # Spectral Gap
+                spectral_gap = abs(eigenvalues[0]) - abs(eigenvalues[1])
+                print(f"Spectral gap for {char} in {hierarchy} {temporality}: {spectral_gap}")
 
-# # testing
+                # 3. Mixing Time Estimation
+                # Mixing time is the time until the distribution is close to stationary distribution
+                # This is complex; here, we provide an approximate mixing time
+                # For ergodic chains, mixing time is related to the second-largest eigenvalue
+                if abs(eigenvalues[1]) < 1:
+                    mixing_time = int(np.ceil(np.log(0.01) / np.log(abs(eigenvalues[1]))))
+                    print(f"Approximate mixing time for {char} in {hierarchy} {temporality}: {mixing_time}")
+                else:
+                    print(f"Cannot compute mixing time for {char} in {hierarchy} {temporality}")
 
+                # 4. Expected Number of Visits
+                # For ergodic chains, the expected number of visits is infinite
+                # Instead, compute expected visits in first n steps
+                n_steps = 10
+                expected_visits = np.zeros((len(states), len(states)))
+                P_power = np.identity(len(states))
+                for step in range(1, n_steps + 1):
+                    P_power = P_power @ tm
+                    expected_visits += P_power
+                print(f"Expected number of visits in first {n_steps} steps for {char} in {hierarchy} {temporality}:\n{expected_visits}")
 
-# # Simulate behavior example
-# start_state = 0  # Assuming starting from 'Sleep' state
-# num_steps = 10  # Example number of steps
-# simulated_states = simulate_behavior(start_state, transition_matrices[0, 0], num_steps)  # Use a specific matrix for simulation
+                # 5. First Return Times
+                # For recurrent states, mean recurrence time is 1 / stationary_probability
+                recurrence_times = {}
+                for i, state in enumerate(states):
+                    if stationary[i] > 0:
+                        recurrence_times[state] = 1.0 / stationary[i]
+                    else:
+                        recurrence_times[state] = np.inf
+                print(f"Mean recurrence times for {char} in {hierarchy} {temporality}:\n{recurrence_times}")
 
-# # Conduct t-test example (Assuming you have defined group1_features and group2_features arrays)
-# t_stat, p_val = ttest_ind(group1_features, group2_features)
-# print("T-test results: T-statistic = {}, P-value = {}".format(t_stat, p_val))
+                # 6. Hitting Times
+                # Compute expected hitting times using fundamental matrix for ergodic chains
+                # For simplicity, use mean first passage times computed earlier
+                print(f"Hitting times (mean first passage times) for {char} in {hierarchy} {temporality}:\n{mfpt}")
 
+                # 7. Commute Times
+                # Commute time between states i and j is mfpt[i, j] + mfpt[j, i]
+                commute_times = mfpt + mfpt.T
+                print(f"Commute times between states for {char} in {hierarchy} {temporality}:\n{commute_times}")
+
+            else:
+                print(f"No data for {char} in {hierarchy} {temporality}.")
+# Updated t-test or Mann-Whitney U test
+# Handle statistical tests appropriately
+group1_features = []
+group2_features = []
+
+for idx, char in enumerate(primary_names):
+    tm = transition_matrices[char][hierarchy][temporality]
+    if np.any(tm):
+        normalize_matrices({char: {hierarchy: {temporality: tm}}})
+        entropy = entropy_rate(tm)
+        if idx % 2 == 0:
+            group1_features.append(entropy)
+        else:
+            group2_features.append(entropy)
+
+if len(group1_features) > 1 and len(group2_features) > 1:
+    t_stat, p_val = ttest_ind(group1_features, group2_features, equal_var=False)
+    print(f"T-test results: T-statistic = {t_stat}, P-value = {p_val}")
+elif len(group1_features) > 0 and len(group2_features) > 0:
+    u_stat, p_val = mannwhitneyu(group1_features, group2_features, alternative='two-sided')
+    print(f"Mann-Whitney U test results: U-statistic = {u_stat}, P-value = {p_val}")
+else:
+    print("Not enough samples to perform statistical test.")
