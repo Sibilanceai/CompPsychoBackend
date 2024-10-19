@@ -5,6 +5,7 @@ import pandas as pd
 from mTE_graph_calculation import compute_MTE_embedded, compute_MTE, silvermans_rule
 import csv
 import re
+import sys
 
 
 def clean_character_name(name):
@@ -42,7 +43,22 @@ def load_final_matrices(character):
     return np.load(f'transition_matrices_final_{character}.npy', allow_pickle=True)
 
 def load_time_series_matrices(character):
-    return np.load(f'transition_matrices_{character}.npy', allow_pickle=True)
+    try:
+        return np.load(f'transition_matrices_{character}.npy', allow_pickle=True)
+    except Exception as e:
+        print(f"Error loading matrix for {character}: {e}")
+        return None
+
+# Load time series matrices
+time_series_agent_matrices = {agent: load_time_series_matrices(agent) for agent in agent_names}
+
+# Check if matrices were loaded successfully
+if any(matrix is None for matrix in time_series_agent_matrices.values()):
+    print("Error: Some matrices failed to load.")
+    sys.exit(1)
+
+print("agent_names:", agent_names)
+print("time_series_agent_matrices keys:", time_series_agent_matrices.keys())
 
 
 final_agent_matrices = {agent: load_final_matrices(agent) for agent in agent_names}
@@ -50,13 +66,12 @@ final_agent_matrices = {agent: load_final_matrices(agent) for agent in agent_nam
 # Example: Load time series matrices if needed
 time_series_agent_matrices = {agent: load_time_series_matrices(agent) for agent in agent_names}
 
-hierarchy = "high-level"
-temporality = "short-term"
+
 print(time_series_agent_matrices[agent_names[0]])
-num_timesteps = len(time_series_agent_matrices[agent_names[0]][hierarchy][temporality])  # Assuming all characters have the same number of timesteps
 
+print("agent_names:", agent_names)
+print("time_series_agent_matrices keys:", time_series_agent_matrices.keys())
 
-print("num timesteps: ", num_timesteps)
 
 all_graphs = []  # Store graphs for evolution analysis
 
@@ -64,31 +79,23 @@ all_graphs = []  # Store graphs for evolution analysis
 significant_te_threshold = 0.002  # threshold for significant TE values
 # Print the first entry of each agent's matrix to see the structure
 
-
-print("time_series_agent_matrices.keys()", time_series_agent_matrices.keys())
-print("agent_names", agent_names)
 # TODO vectorize and make this more efficient
+# Define these for the data
+lag = 1
+dimensions = 2
+use_embeddings = True
 
-def generate_all_graphs(): 
+def generate_all_graphs():
     # Define the structure of categories and terms
     categories = ['high-level', 'task-specific', 'context-specific']
     terms = ['short-term', 'medium-term', 'long-term']
 
     significant_te_threshold = 0.002  # Define a significant threshold for TE
 
-
     all_graphs = []  # This will collect all graphs over time
 
-    # Create data structures to store time series for each category-term block
-    time_series_data = {
-        agent: {cat: {term: [] for term in terms} for cat in categories} for agent in agent_names
-    }
-
-    # Define these for the data
-    lag = 1
-    dimensions = 2
-    use_embeddings = True
-
+    # Determine the number of timesteps
+    num_timesteps = len(time_series_agent_matrices[agent_names[0]])
 
     for time in range(num_timesteps):
         G = nx.DiGraph()
@@ -105,30 +112,24 @@ def generate_all_graphs():
                     positions[node_id] = (i * x_offset + k * group_offset, j * y_offset)
                     G.add_node(node_id, pos=positions[node_id], label=node_id, group=f"{category}_{term}")
 
-
         # Aggregate data and compute TE
         for category in categories:
             for term in terms:
                 for i, agent_i in enumerate(agent_names):
                     for j, agent_j in enumerate(agent_names):
                         if i != j:
-                            matrix_i = np.concatenate([time_series_agent_matrices[agent_i][t][category][term] for t in range(time+1)], axis=0)
-                            matrix_j = np.concatenate([time_series_agent_matrices[agent_j][t][category][term] for t in range(time+1)], axis=0)
-                            # Check the shape before computation
-                            # print(f"Shape before TE computation for {category}_{term} from {agent_i} to {agent_j}: matrix_i shape={matrix_i.shape}, matrix_j shape={matrix_j.shape}")
+                            matrix_i = np.array([time_series_agent_matrices[agent_i][t][category][term] for t in range(time+1)])
+                            matrix_j = np.array([time_series_agent_matrices[agent_j][t][category][term] for t in range(time+1)])
 
                             # Flatten the matrices before TE computation
                             matrix_i_flat = matrix_i.flatten()
                             matrix_j_flat = matrix_j.flatten()
-                            # Check the shape before computation
-                            # print(f"Shape after flattening and before TE computation for {category}_{term} from {agent_i} to {agent_j}: matrix_i shape={matrix_i_flat.shape}, matrix_j shape={matrix_j_flat.shape}")
 
                             # Check if there's enough data to perform embedding
                             if matrix_i_flat.size >= lag * dimensions and matrix_j_flat.size >= lag * dimensions:
                                 try:
                                     if use_embeddings:
-                                        if matrix_i_flat.size >= lag * dimensions and matrix_j_flat.size >= lag * dimensions:
-                                            te_value = compute_MTE_embedded(X=matrix_i_flat, Y=matrix_j_flat, lag=1, dimensions=2)
+                                        te_value = compute_MTE_embedded(X=matrix_i_flat, Y=matrix_j_flat, lag=1, dimensions=2)
                                     else:
                                         te_value = compute_MTE(X_matrix=matrix_i_flat, Y_matrix=matrix_j_flat)
 
@@ -138,12 +139,13 @@ def generate_all_graphs():
                                 except ValueError as e:
                                     print(f"Error calculating TE for {category}_{term} from {agent_i} to {agent_j}: {e}")
 
-
         all_graphs.append(G)
-    # print(type(all_graphs))
-    # print(all_graphs)
-    # print("num graphs ", len(all_graphs))
+
     return all_graphs
+
+# Call the function
+all_graphs = generate_all_graphs()
+print("num graphs:", len(all_graphs))
     
 
 

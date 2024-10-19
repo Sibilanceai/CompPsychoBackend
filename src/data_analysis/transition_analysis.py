@@ -284,6 +284,8 @@ def simulate_behavior(start_state, transition_matrix, num_steps):
         states.append(current_state)
     return states
 
+hierarchy_levels = ['high-level', 'context-specific', 'task-specific']
+temporality_levels = ['short-term', 'medium-term', 'long-term']
 
 def process_and_update_matrices(events_dict, transition_matrices):
     time_series_matrices = {char: [] for char in primary_names}  # Prepare a dict to hold all time-series data
