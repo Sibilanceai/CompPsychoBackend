@@ -264,13 +264,16 @@ def save_graphs_to_json(graphs, filename='graph_data.json'):
         elements = []
         # Add nodes
         for node, data in G.nodes(data=True):
+            # Get the position and ensure it's a dict with 'x' and 'y'
+            pos = data.get('pos', (0, 0))
+            position = {'x': pos[0], 'y': pos[1]} if isinstance(pos, (tuple, list)) else pos
             elements.append({
                 'data': {
                     'id': node,
                     'label': data.get('label', node),
                     'group': data.get('group', '')
                 },
-                'position': data.get('pos', {'x': 0, 'y': 0})
+                'position': position
             })
         # Add edges
         for source, target, data in G.edges(data=True):
