@@ -10,6 +10,7 @@ import sys
 from scipy.interpolate import interp1d
 from itertools import combinations
 from joblib import Parallel, delayed
+import json  # Import json module
 
 
 
@@ -188,41 +189,53 @@ def generate_all_graphs():
             start_time = max(0, time - W + 1)
             time_indices = range(start_time, time + 1)
 
-            matrix_i = np.array([
-                interpolated_time_series_agent_matrices[source_agent][t][category][term]
-                for t in time_indices
-            ])
-            matrix_j = np.array([
-                interpolated_time_series_agent_matrices[target_agent][t][category][term]
-                for t in time_indices
-            ])
+            # Handle cases where time_indices may be invalid
+            if len(time_indices) < lag * dimensions:
+                return None
+
+            try:
+                matrix_i = np.array([
+                    interpolated_time_series_agent_matrices[source_agent][t][category][term]
+                    for t in time_indices
+                ])
+                matrix_j = np.array([
+                    interpolated_time_series_agent_matrices[target_agent][t][category][term]
+                    for t in time_indices
+                ])
+            except IndexError:
+                # Time index out of range
+                return None
 
             # Flatten matrices
             matrix_i_flat = matrix_i.reshape(len(time_indices), -1)
             matrix_j_flat = matrix_j.reshape(len(time_indices), -1)
 
-            # Proceed with TE computation using the flattened matrices
-            if matrix_i_flat.shape[0] >= lag * dimensions and matrix_j_flat.shape[0] >= lag * dimensions:
-                try:
-                    if use_embeddings:
-                        te_value = compute_MTE_embedded(
-                            X=matrix_i_flat, Y=matrix_j_flat, lag=lag, dimensions=dimensions
-                        )
-                    else:
-                        te_value = compute_MTE(X_matrix=matrix_i_flat, Y_matrix=matrix_j_flat)
+            # Check variances
+            var_i = np.var(matrix_i_flat)
+            var_j = np.var(matrix_j_flat)
+            if var_i < 1e-6 or var_j < 1e-6:
+                return None  # Variance too low to compute meaningful MTE
 
-                    if np.isnan(te_value) or np.isinf(te_value):
-                        print(f"TE value is NaN or Inf for agents {source_agent} and {target_agent} at time {time}")
-                        return None
+            # Proceed with TE computation
+            try:
+                if use_embeddings:
+                    te_value = compute_MTE_embedded(
+                        X=matrix_i_flat, Y=matrix_j_flat, lag=lag, dimensions=dimensions
+                    )
+                else:
+                    te_value = compute_MTE(X_matrix=matrix_i_flat, Y_matrix=matrix_j_flat)
 
-                    if abs(te_value) > significant_te_threshold:
-                        return (source_agent, target_agent, category, term, te_value)
-                except Exception as e:
-                    print(f"Error calculating TE for {category}_{term} from {source_agent} to {target_agent}: {e}")
+                if np.isnan(te_value) or np.isinf(te_value):
+                    return None
+
+                if abs(te_value) > significant_te_threshold:
+                    return (source_agent, target_agent, category, term, te_value)
+            except Exception as e:
+                print(f"Error calculating TE for {category}_{term} from {source_agent} to {target_agent}: {e}")
             return None
 
         # Compute TE values in parallel
-        results = Parallel(n_jobs=4, batch_size='auto')(delayed(compute_te_for_pair)(args) for args in tasks)
+        results = Parallel(n_jobs=-1, batch_size='auto')(delayed(compute_te_for_pair)(args) for args in tasks)
 
         # Add edges to the graph based on TE values
         for res in results:
@@ -241,6 +254,45 @@ def generate_all_graphs():
 # Call the function
 all_graphs = generate_all_graphs()
 print("Number of graphs:", len(all_graphs))
+
+
+# At the end of your script, after generating all_graphs
+def save_graphs_to_json(graphs, filename='graph_data.json'):
+    """Save the list of graphs to a JSON file."""
+    graph_data = []
+    for time_index, G in enumerate(graphs):
+        elements = []
+        # Add nodes
+        for node, data in G.nodes(data=True):
+            elements.append({
+                'data': {
+                    'id': node,
+                    'label': data.get('label', node),
+                    'group': data.get('group', '')
+                },
+                'position': data.get('pos', {'x': 0, 'y': 0})
+            })
+        # Add edges
+        for source, target, data in G.edges(data=True):
+            elements.append({
+                'data': {
+                    'source': source,
+                    'target': target,
+                    'weight': data.get('weight', 1)
+                }
+            })
+        graph_data.append({
+            'time': time_index,
+            'elements': elements
+        })
+    # Save to JSON file
+    with open(filename, 'w') as f:
+        json.dump(graph_data, f)
+
+# Call the function to save graphs
+save_graphs_to_json(all_graphs)
+print("Graph data saved to 'graph_data.json'")
+
 
 # Function to analyze and plot network evolution
 def plot_network_evolution(graphs):
@@ -264,3 +316,4 @@ def plot_network_evolution(graphs):
 
 # Optionally, plot the network evolution
 # plot_network_evolution(all_graphs)
+
