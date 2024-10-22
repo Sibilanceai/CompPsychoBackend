@@ -145,7 +145,7 @@ print("Interpolated matrices for agents:", interpolated_time_series_agent_matric
 lag = 1
 dimensions = 2
 use_embeddings = True
-significant_te_threshold = 0.002  # threshold for significant TE values
+significant_te_threshold = 0.0000001  # threshold for significant TE values
 
 def generate_all_graphs():
     # Define the structure of categories and terms
@@ -162,7 +162,7 @@ def generate_all_graphs():
 
         # Define node positions and customize spacing
         positions = {}
-        x_offset, y_offset, group_offset = 2, 2, 10
+        x_offset, y_offset, group_offset = 200, 200, 1000  # Increased offsets
 
         # Initialize nodes
         for i, category in enumerate(categories):
@@ -229,7 +229,10 @@ def generate_all_graphs():
                     return None
 
                 if abs(te_value) > significant_te_threshold:
+                    print(f"Adding edge from {source_agent} to {target_agent} for {category}_{term} at time {time} with TE value {te_value}")
                     return (source_agent, target_agent, category, term, te_value)
+                else:
+                    print(f"TE value {te_value} not significant for {source_agent} to {target_agent} at time {time}")   
             except Exception as e:
                 print(f"Error calculating TE for {category}_{term} from {source_agent} to {target_agent}: {e}")
             return None
