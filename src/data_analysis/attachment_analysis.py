@@ -1,642 +1,281 @@
-import pandas as pd
 import numpy as np
 import networkx as nx
-from networkx.algorithms import community
-from sklearn.metrics import mutual_info_score
-from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-import csv
+from sklearn.cluster import KMeans
+from sklearn.metrics import mutual_info_score
+from scipy.stats import pearsonr
+import pandas as pd
+from typing import Dict, List, Tuple, Optional
+import logging
+from scipy.interpolate import interp1d
+from collections import defaultdict
+import json
+from scipy.stats import entropy
+from sklearn.preprocessing import StandardScaler
 from community import community_louvain
 from node2vec import Node2Vec
-from scipy.stats import pearsonr
 
-# Load event sequences
-event_sequences = pd.read_csv("event_sequences.csv")
-def read_characters_from_csv(file_path):
-    """ Read character names from a CSV file and return them as a list. """
-    characters = []
-    with open(file_path, mode='r', newline='') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if row:  # Ensure the row is not empty
-                characters.append(row[0])
-    return characters
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Example list of tracked individuals
-tracked_individuals = read_characters_from_csv('characters.csv')  # Update this list based on your actual tracked individuals, and file path
-
-# Function to filter subjects and objects to those being tracked
-def filter_tracked_individuals(subjects, objects, tracked_individuals):
-    filtered_subjects = [subject for subject in subjects if subject in tracked_individuals]
-    filtered_objects = [obj for obj in objects if obj in tracked_individuals]
-    return np.union1d(filtered_subjects, filtered_objects)
-
-
-# Initialize the graph
-G = nx.Graph()
-
-# Extract subjects and objects involved in events
-subjects = event_sequences['subject'].unique()
-objects = pd.unique(event_sequences['object'].str.split(';', expand=True).stack())  # Assuming objects are separated by semicolons
-
-# Filter to only include tracked individuals
-all_individuals = filter_tracked_individuals(subjects, objects, tracked_individuals)
-
-G.add_nodes_from(all_individuals)
-
-
-def calculate_differential_matrix(matrix_pre, matrix_post):
-    """Calculate the differential transition matrix."""
-    return matrix_post - matrix_pre
-
-# Define a threshold to determine significant influence
-threshold = 0.1  # Adjust based on your data's scale and distribution
-
-def update_graph_with_influence(G, interactions, transition_matrices_by_timestamp):
-    """Update the graph with mutual information scores based on differential matrices."""
-    for interaction in interactions:
-        subject, object, timestamp = interaction  # Assuming interaction tuple format
-        matrix_pre_subject = get_pre_interaction_matrix(subject, timestamp, transition_matrices_by_timestamp)
-        matrix_post_subject = get_post_interaction_matrix(subject, timestamp, transition_matrices_by_timestamp)
-        matrix_pre_object = get_pre_interaction_matrix(object, timestamp, transition_matrices_by_timestamp)
-        matrix_post_object = get_post_interaction_matrix(object, timestamp, transition_matrices_by_timestamp)
-
-        differential_matrix_subject = calculate_differential_matrix(matrix_pre_subject, matrix_post_subject)
-        differential_matrix_object = calculate_differential_matrix(matrix_pre_object, matrix_post_object)
-
-        # Flatten matrices to calculate mutual information
-        mi_score = mutual_info_score(differential_matrix_subject.flatten(), differential_matrix_object.flatten())
-
-        # Update the graph
-        if mi_score > threshold:  # Define a suitable threshold based on your analysis
-            if G.has_edge(subject, object):
-                # Update existing weight (could average, sum, or replace)
-                G[subject][object]['weight'] = (G[subject][object]['weight'] + mi_score) / 2
+class AttachmentAnalyzer:
+    def __init__(self, characters: List[str], transition_matrices: Dict[str, List[Dict]], 
+                 time_stamps: Dict[str, List[int]], graph_snapshots: Optional[List[nx.Graph]] = None):
+        """
+        Initialize AttachmentAnalyzer with character and matrix information.
+        
+        Args:
+            characters: List of character names
+            transition_matrices: Dictionary of transition matrices by character
+            time_stamps: Dictionary of timestamps by character
+            graph_snapshots: Optional list of network snapshots over time
+        """
+        self.characters = characters
+        self.transition_matrices = transition_matrices
+        self.time_stamps = time_stamps
+        self.graph_snapshots = graph_snapshots or []
+        self.interaction_network = nx.DiGraph()
+        self.proximity_scores = {}
+        self.safe_haven_scores = {}
+        self.secure_base_scores = {}
+        self.attachment_styles = {}
+        self.temporal_patterns = defaultdict(list)
+        self.embeddings = {}
+        
+    def analyze_network_evolution(self):
+        """Analyze the evolution of network structure over time."""
+        if not self.graph_snapshots:
+            logger.warning("No graph snapshots available for evolution analysis")
+            return
+        
+        evolution_metrics = {
+            'density': [],
+            'clustering': [],
+            'path_length': [],
+            'modularity': []
+        }
+        
+        for snapshot in self.graph_snapshots:
+            evolution_metrics['density'].append(nx.density(snapshot))
+            evolution_metrics['clustering'].append(nx.average_clustering(snapshot))
+            
+            # Path length for connected components only
+            if nx.is_connected(snapshot):
+                path_length = nx.average_shortest_path_length(snapshot)
             else:
-                G.add_edge(subject, object, weight=mi_score)
-
-def get_pre_interaction_matrix(individual, timestamp, transition_matrices_by_timestamp):
-    # Implement retrieval of the pre-interaction matrix for 'individual' just before 'timestamp'
-    pass
-
-def get_post_interaction_matrix(individual, timestamp, transition_matrices_by_timestamp):
-    # Implement retrieval of the post-interaction matrix for 'individual' just after 'timestamp'
-    pass
-
-# Visualization
-plt.figure(figsize=(10, 8))
-pos = nx.spring_layout(G)  # positions for all nodes
-nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10)
-edge_labels = nx.get_edge_attributes(G, 'weight')
-nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.5, font_size=8)
-plt.show()
-
-# analysis functions
-
-def plot_degree_centrality(G):
-    degree_centrality = nx.degree_centrality(G)
-    plt.figure(figsize=(8, 6))
-    plt.bar(range(len(degree_centrality)), list(degree_centrality.values()), align='center')
-    plt.xticks(range(len(degree_centrality)), list(degree_centrality.keys()), rotation='vertical')
-    plt.xlabel('Node')
-    plt.ylabel('Degree Centrality')
-    plt.title('Node Degree Centrality')
-    plt.show()
-
-def plot_in_out_degree_centrality(G):
-    if not G.is_directed():
-        print("Graph is not directed. In-degree and out-degree analysis is not applicable.")
-        return
-    in_degree_centrality = nx.in_degree_centrality(G)
-    out_degree_centrality = nx.out_degree_centrality(G)
+                path_length = float('inf')
+            evolution_metrics['path_length'].append(path_length)
+            
+            # Community detection
+            partition = community_louvain.best_partition(snapshot)
+            modularity = community_louvain.modularity(partition, snapshot)
+            evolution_metrics['modularity'].append(modularity)
+            
+        return evolution_metrics
     
-    plt.figure(figsize=(12, 5))
-
-    plt.subplot(1, 2, 1)
-    plt.bar(range(len(in_degree_centrality)), list(in_degree_centrality.values()), align='center')
-    plt.xticks(range(len(in_degree_centrality)), list(in_degree_centrality.keys()), rotation='vertical')
-    plt.xlabel('Node')
-    plt.ylabel('In-Degree Centrality')
-    plt.title('Node In-Degree Centrality')
-
-    plt.subplot(1, 2, 2)
-    plt.bar(range(len(out_degree_centrality)), list(out_degree_centrality.values()), align='center')
-    plt.xticks(range(len(out_degree_centrality)), list(out_degree_centrality.keys()), rotation='vertical')
-    plt.xlabel('Node')
-    plt.ylabel('Out-Degree Centrality')
-    plt.title('Node Out-Degree Centrality')
-
-    plt.tight_layout()
-    plt.show()
-
-def analyze_shortest_paths(G):
-    # Calculate shortest paths for all pairs of nodes
-    # Note: This can be resource-intensive for large graphs
-    path_lengths = dict(nx.all_pairs_shortest_path_length(G))
+    def compute_embeddings(self):
+        """Compute node embeddings for each character over time."""
+        if not self.graph_snapshots:
+            return
+        
+        for t, snapshot in enumerate(self.graph_snapshots):
+            node2vec = Node2Vec(snapshot, dimensions=64, walk_length=30, num_walks=200, workers=4)
+            model = node2vec.fit(window=10, min_count=1)
+            
+            # Store embeddings for each character
+            for char in self.characters:
+                if char not in self.embeddings:
+                    self.embeddings[char] = []
+                try:
+                    self.embeddings[char].append(model.wv[char])
+                except KeyError:
+                    # Character not in this snapshot
+                    self.embeddings[char].append(np.zeros(64))
     
-    # Calculate average path length
-    total_paths_length = sum([sum(lengths.values()) for source, lengths in path_lengths.items()])
-    number_of_paths = sum([len(lengths) for source, lengths in path_lengths.items()])
-    average_path_length = total_paths_length / number_of_paths
+    def analyze_attachment_dynamics(self, window_size: int = 10):
+        """
+        Analyze temporal dynamics of attachment patterns.
+        
+        Args:
+            window_size: Size of sliding window for analysis
+        """
+        for t in range(len(self.graph_snapshots) - window_size + 1):
+            window = self.graph_snapshots[t:t+window_size]
+            
+            # Calculate attachment metrics for window
+            proximity = self._calculate_proximity_window(window)
+            safe_haven = self._calculate_safe_haven_window(window)
+            secure_base = self._calculate_secure_base_window(window)
+            
+            # Store temporal patterns
+            self.temporal_patterns['proximity'].append(proximity)
+            self.temporal_patterns['safe_haven'].append(safe_haven)
+            self.temporal_patterns['secure_base'].append(secure_base)
     
-    print(f"Average Path Length: {average_path_length}")
+    def _calculate_proximity_window(self, window: List[nx.Graph]) -> Dict[str, float]:
+        """Calculate proximity scores within a time window."""
+        proximity_scores = defaultdict(list)
+        
+        for graph in window:
+            for char in self.characters:
+                if char in graph:
+                    # Calculate degree centrality as proxy for proximity seeking
+                    score = nx.degree_centrality(graph)[char]
+                    proximity_scores[char].append(score)
+                    
+        # Average scores over window
+        return {char: np.mean(scores) for char, scores in proximity_scores.items()}
     
-    return path_lengths, average_path_length
-
-
-def analyze_clustering_and_communities(G):
-    # Clustering Coefficient
-    clustering_coefficient = nx.average_clustering(G)
-    print(f"Average Clustering Coefficient: {clustering_coefficient}")
+    def _calculate_safe_haven_window(self, window: List[nx.Graph]) -> Dict[str, float]:
+        """Calculate safe haven scores within a time window."""
+        safe_haven_scores = defaultdict(list)
+        
+        for graph in window:
+            for char in self.characters:
+                if char in graph:
+                    # Calculate weighted clustering coefficient as proxy for safe haven behavior
+                    score = nx.clustering(graph, char)
+                    safe_haven_scores[char].append(score)
+                    
+        return {char: np.mean(scores) for char, scores in safe_haven_scores.items()}
     
-    # Community Detection with Louvain Method
-    partition = community_louvain.best_partition(G)
+    def _calculate_secure_base_window(self, window: List[nx.Graph]) -> Dict[str, float]:
+        """Calculate secure base scores within a time window."""
+        secure_base_scores = defaultdict(list)
+        
+        for graph in window:
+            for char in self.characters:
+                if char in graph:
+                    # Calculate betweenness centrality as proxy for secure base behavior
+                    score = nx.betweenness_centrality(graph)[char]
+                    secure_base_scores[char].append(score)
+                    
+        return {char: np.mean(scores) for char, scores in secure_base_scores.items()}
     
-    # Number of communities
-    num_communities = len(set(partition.values()))
-    print(f"Number of communities detected: {num_communities}")
+    def analyze_attachment_stability(self):
+        """Analyze the stability of attachment patterns over time."""
+        stability_metrics = {}
+        
+        for char in self.characters:
+            # Calculate variance in attachment metrics over time
+            proximity_stability = np.var(self.temporal_patterns['proximity'])
+            safe_haven_stability = np.var(self.temporal_patterns['safe_haven'])
+            secure_base_stability = np.var(self.temporal_patterns['secure_base'])
+            
+            stability_metrics[char] = {
+                'proximity_stability': proximity_stability,
+                'safe_haven_stability': safe_haven_stability,
+                'secure_base_stability': secure_base_stability,
+                'overall_stability': np.mean([
+                    proximity_stability,
+                    safe_haven_stability,
+                    secure_base_stability
+                ])
+            }
+            
+        return stability_metrics
     
-    return clustering_coefficient, partition
-
-def analyze_centrality_measures(G):
-    # Betweenness Centrality
-    betweenness_centrality = nx.betweenness_centrality(G)
+    def classify_attachment_patterns(self):
+        """Classify attachment patterns using clustering on temporal features."""
+        # Extract temporal features for each character
+        features = []
+        for char in self.characters:
+            char_features = []
+            # Add temporal stability features
+            stability_metrics = self.analyze_attachment_stability()[char]
+            char_features.extend([
+                stability_metrics['proximity_stability'],
+                stability_metrics['safe_haven_stability'],
+                stability_metrics['secure_base_stability']
+            ])
+            # Add embedding features if available
+            if char in self.embeddings:
+                char_features.extend(np.mean(self.embeddings[char], axis=0))
+            features.append(char_features)
+            
+        # Standardize features
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(features)
+        
+        # Perform clustering
+        kmeans = KMeans(n_clusters=4, random_state=42)
+        labels = kmeans.fit_predict(features_scaled)
+        
+        # Map clusters to attachment styles
+        styles = ['Secure', 'Anxious', 'Avoidant', 'Disorganized']
+        self.attachment_styles = {char: styles[label] for char, label in zip(self.characters, labels)}
+        
+        return self.attachment_styles
     
-    # Closeness Centrality
-    closeness_centrality = nx.closeness_centrality(G)
+    def visualize_attachment_evolution(self, save_path: Optional[str] = None):
+        """Visualize the evolution of attachment patterns."""
+        # Plot network evolution metrics
+        evolution_metrics = self.analyze_network_evolution()
+        
+        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        for (metric, values), ax in zip(evolution_metrics.items(), axes.flat):
+            ax.plot(values, marker='o')
+            ax.set_title(f'{metric.capitalize()} Evolution')
+            ax.set_xlabel('Time')
+            ax.set_ylabel(metric.capitalize())
+            
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(f"{save_path}/network_evolution.png")
+        plt.close()
+        
+        # Plot temporal patterns
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for metric, values in self.temporal_patterns.items():
+            ax.plot(values, label=metric.capitalize())
+        ax.set_title('Attachment Pattern Evolution')
+        ax.set_xlabel('Time Window')
+        ax.set_ylabel('Score')
+        ax.legend()
+        
+        if save_path:
+            plt.savefig(f"{save_path}/attachment_patterns.png")
+        plt.close()
     
-    # Eigenvector Centrality
-    eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
+    def export_comprehensive_results(self, filepath: str):
+        """Export comprehensive analysis results to JSON."""
+        results = {
+            'attachment_styles': self.attachment_styles,
+            'temporal_patterns': {k: v.tolist() for k, v in self.temporal_patterns.items()},
+            'stability_metrics': self.analyze_attachment_stability(),
+            'network_evolution': self.analyze_network_evolution(),
+            'final_network_metrics': {
+                'density': nx.density(self.interaction_network),
+                'clustering': nx.average_clustering(self.interaction_network),
+                'modularity': community_louvain.modularity(
+                    community_louvain.best_partition(self.interaction_network),
+                    self.interaction_network
+                )
+            }
+        }
+        
+        with open(filepath, 'w') as f:
+            json.dump(results, f, indent=4)
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize analyzer with your data
+    analyzer = AttachmentAnalyzer(
+        characters=primary_names,
+        transition_matrices=time_series_matrices,
+        time_stamps=time_stamps,
+        graph_snapshots=all_graphs  # From your existing graph generation
+    )
     
-    return betweenness_centrality, closeness_centrality, eigenvector_centrality
-
-def analyze_assortativity(G, attribute_name):
-    # For numeric attributes
-    assortativity_coefficient = nx.numeric_assortativity_coefficient(G, attribute_name)
-    print(f"Assortativity Coefficient for {attribute_name}: {assortativity_coefficient}")
+    # Perform comprehensive analysis
+    analyzer.analyze_network_evolution()
+    analyzer.compute_embeddings()
+    analyzer.analyze_attachment_dynamics()
+    attachment_styles = analyzer.classify_attachment_patterns()
     
-    return assortativity_coefficient
-
-def homophily_analysis(G, attribute):
-    """
-    Perform a homophily analysis based on the distribution of node connections relative to an attribute.
+    # Visualize results
+    analyzer.visualize_attachment_evolution(save_path='./results')
     
-    :param G: A NetworkX graph
-    :param attribute: The node attribute to perform homophily analysis on (e.g., 'group')
-    """
-    groups = set(nx.get_node_attributes(G, attribute).values())
-    connections_within_groups = {group: 0 for group in groups}
-    total_connections = 0
-    
-    for node in G.nodes(data=True):
-        node_group = node[1][attribute]
-        for neighbor in G[node[0]]:
-            total_connections += 1
-            neighbor_group = G.nodes[neighbor].get(attribute, None)
-            if node_group == neighbor_group:
-                connections_within_groups[node_group] += 1
-                
-    print("Homophily Analysis:")
-    for group, connections in connections_within_groups.items():
-        print(f"Group {group}: {connections / total_connections * 100:.2f}% of connections are within this group")
-
-
-
-def analyze_network_robustness(G, centrality_measure=nx.betweenness_centrality):
-    # Calculate centrality
-    centrality = centrality_measure(G)
-    
-    # Sort nodes by centrality
-    sorted_nodes = sorted(centrality, key=centrality.get, reverse=True)
-    
-    # Remove top 10% most central nodes
-    G_reduced = G.copy()
-    nodes_to_remove = sorted_nodes[:len(sorted_nodes) // 10]
-    G_reduced.remove_nodes_from(nodes_to_remove)
-    
-    # Check if the network is still connected (for undirected graphs)
-    is_connected = nx.is_connected(G_reduced)
-    
-    print(f"Is the network still connected after removing top 10% central nodes? {is_connected}")
-    
-    return is_connected
-
-snapshots = [G_t1, G_t2, G_t3, ...]  # G_ti represents the network snapshot at time i
-
-
-def plot_network_evolution(snapshots):
-    """
-    Plots the evolution of various network metrics over time.
-    
-    :param snapshots: A list of NetworkX graphs representing the network at different time points.
-    """
-    metrics = {
-        'Number of Nodes': [],
-        'Number of Edges': [],
-        'Average Degree': [],
-        'Clustering Coefficient': []
-    }
-    
-    for G in snapshots:
-        metrics['Number of Nodes'].append(len(G.nodes()))
-        metrics['Number of Edges'].append(len(G.edges()))
-        degrees = [deg for node, deg in G.degree()]
-        metrics['Average Degree'].append(np.mean(degrees) if degrees else 0)
-        metrics['Clustering Coefficient'].append(nx.average_clustering(G))
-    
-    # Plotting
-    plt.figure(figsize=(14, 10))
-    for i, (metric, values) in enumerate(metrics.items(), start=1):
-        plt.subplot(2, 2, i)
-        plt.plot(values, marker='o', linestyle='-')
-        plt.title(metric)
-        plt.xlabel('Time Snapshot')
-        plt.ylabel(metric)
-    
-    plt.tight_layout()
-    plt.show()
-
-
-
-def analyze_community_evolution(snapshots):
-    """
-    Analyzes the evolution of community structure over time.
-    
-    :param snapshots: A list of NetworkX graphs representing the network at different time points.
-    """
-    community_changes = []
-
-    for G in snapshots:
-        partition = community_louvain.best_partition(G)
-        num_communities = len(set(partition.values()))
-        community_changes.append(num_communities)
-    
-    plt.figure(figsize=(8, 6))
-    plt.plot(community_changes, marker='o', linestyle='-')
-    plt.title('Evolution of Community Structure')
-    plt.xlabel('Time Snapshot')
-    plt.ylabel('Number of Communities')
-    plt.grid(True)
-    plt.show()
-
-def prepare_for_temporal_motif_analysis(network_snapshots):
-    # This method is a placeholder for preparing your network data
-    # for temporal motif analysis, which might involve identifying 
-    # recurring interaction patterns within and across snapshots.
-    print("Prepare your network snapshots for temporal motif analysis.")
-    # Actual implementation will depend on the motifs of interest
-    # and the tool or algorithm you plan to use.
-
-def longitudinal_network_analysis(network_snapshots):
-    metrics = {'Average Clustering': [], 'Average Shortest Path Length': []}
-    
-    for G in network_snapshots:
-        metrics['Average Clustering'].append(nx.average_clustering(G))
-        if nx.is_connected(G):
-            metrics['Average Shortest Path Length'].append(nx.average_shortest_path_length(G))
-        else:
-            metrics['Average Shortest Path Length'].append(float('inf'))
-    
-    # Plotting
-    plt.figure(figsize=(10, 5))
-    for metric, values in metrics.items():
-        plt.plot(values, label=metric)
-    plt.xlabel('Time (snapshot index)')
-    plt.ylabel('Metric Value')
-    plt.legend()
-    plt.show()
-
-
-def generate_node_embeddings(G):
-    """
-    Generate node embeddings using Node2Vec.
-    
-    :param G: A NetworkX graph.
-    :return: A model that contains the node embeddings.
-    """
-    node2vec = Node2Vec(G, dimensions=64, walk_length=30, num_walks=200, workers=4)
-    model = node2vec.fit(window=10, min_count=1)
-    return model
-
-def node_embedding_evolution(network_snapshots):
-    embeddings_over_time = []
-    for G in network_snapshots:
-        node2vec = Node2Vec(G, dimensions=64, walk_length=30, num_walks=200, workers=2)
-        model = node2vec.fit(window=10, min_count=1, batch_words=4)
-        embeddings_over_time.append(model.wv)
-    return embeddings_over_time
-
-def link_prediction_analysis(network_snapshots):
-    for i in range(len(network_snapshots)-1):
-        G1 = network_snapshots[i]
-        G2 = network_snapshots[i+1]
-        predicted_edges = nx.preferential_attachment(G1, G2.nodes())
-        # Process and analyze predicted_edges as needed
-        # This is a simplified placeholder. Actual implementation may vary based on
-        # the prediction method and how you compare predictions to the subsequent snapshot.
-        print(f"Snapshot {i} to {i+1}: Predicted new or strengthened connections.")
-
-
-def laplacian_spectrum_analysis(G):
-    """
-    Analyze and plot the Laplacian spectrum of the network.
-    
-    :param G: A NetworkX graph.
-    """
-    laplacian = nx.laplacian_matrix(G).toarray()
-    eigenvalues = np.linalg.eigvals(laplacian)
-    eigenvalues.sort()
-    
-    plt.figure()
-    plt.plot(eigenvalues, marker='o')
-    plt.title('Laplacian Spectrum')
-    plt.xlabel('Index')
-    plt.ylabel('Eigenvalue')
-    plt.show()
-    
-    # The number of near-zero eigenvalues indicates the number of connected components
-    # Small eigenvalues indicate potential community structures
-
-
-
-# Formal Attachment Theory functions
-
-"""
-Proximity seeking can be quantified by analyzing the frequency and strength of connections (edges) initiated by an agent (node) towards others. 
-This can reflect the agent's attempt to stay close to or seek comfort from others.
-"""
-def measure_proximity_seeking(G):
-    """
-    Measures proximity seeking behavior in the network by analyzing the strength and frequency of outgoing edges.
-    
-    :param G: A NetworkX graph representing the network.
-    :return: A dictionary with nodes as keys and their proximity seeking scores as values.
-    """
-    proximity_seeking_scores = {}
-    for node in G.nodes:
-        edges = G.out_edges(node, data=True)
-        score = sum(weight for _, _, weight in edges) / len(edges) if edges else 0
-        proximity_seeking_scores[node] = score
-    return proximity_seeking_scores
-
-
-"""
-Safe haven dynamics can be represented by the tendency of agents to connect with specific others in times of distress, 
-which can be reflected by the strengthening of edges under certain conditions 
-(e.g., increased interaction frequency or intensity during simulated stress events).
-"""
-
-def measure_safe_haven(G, stress_events):
-    """
-    Measures safe haven behavior by analyzing changes in edge strengths during stress events.
-    
-    :param G: A NetworkX graph representing the network.
-    :param stress_events: A list of tuples representing stress events (node, stress level).
-    :return: A dictionary with node pairs as keys and changes in edge strength as values.
-    """
-    safe_haven_changes = {}
-    for node, stress_level in stress_events:
-        neighbors = G.neighbors(node)
-        for neighbor in neighbors:
-            # Assuming edge attribute 'stress_response' captures change in interaction
-            edge_data = G.get_edge_data(node, neighbor)
-            response = edge_data.get('stress_response', 0)
-            safe_haven_changes[(node, neighbor)] = response
-    return safe_haven_changes
-
-"""
-Secure base behavior can be assessed by the extent to which agents facilitate exploration or supportiveness for others. 
-This could be reflected in the network by outgoing edges from an agent that increase in strength or number as the agent supports 
-others' exploration or development.
-"""
-
-def measure_secure_base(G):
-    """
-    Measures secure base behavior by analyzing supportive interactions that facilitate exploration.
-    
-    :param G: A NetworkX graph.
-    :return: A dictionary with nodes as keys and their secure base scores as values.
-    """
-    secure_base_scores = {}
-    for node in G.nodes:
-        supportive_edges = G.out_edges(node, data=True)
-        score = sum(data['supportiveness'] for _, _, data in supportive_edges) / len(supportive_edges) if supportive_edges else 0
-        secure_base_scores[node] = score
-    return secure_base_scores
-
-
-# Analysis using formal attachment data
-
-"""
-To study the evolution of attachment behaviors over time, especially in response to simulated life challenges or stressors, 
-you can analyze how the measures of proximity seeking, safe haven, and secure base change across different network snapshots, 
-which correspond to different time points or conditions.
-"""
-def temporal_analysis_of_attachment_behaviors(network_snapshots, behavior_measure_functions):
-    """
-    Tracks the evolution of attachment behaviors over time using network snapshots.
-    
-    :param network_snapshots: A list of network snapshots (NetworkX graphs) over time.
-    :param behavior_measure_functions: A dict of functions to measure specific attachment behaviors.
-    """
-    behavior_trends = {key: [] for key in behavior_measure_functions.keys()}
-    
-    for snapshot in network_snapshots:
-        for behavior, function in behavior_measure_functions.items():
-            measure = function(snapshot)
-            behavior_trends[behavior].append(np.mean(list(measure.values())))
-    
-    # Plotting the trend of each attachment behavior over time
-    for behavior, trends in behavior_trends.items():
-        plt.plot(trends, label=behavior)
-    plt.xlabel('Time (snapshot index)')
-    plt.ylabel('Behavior Measure')
-    plt.legend()
-    plt.show()
-
-
-
-"""
-For classifying agents into attachment styles based on their behavior patterns, 
-clustering algorithms can be applied to the measured scores for proximity seeking, safe haven, and secure base behaviors.
-"""
-def classify_attachment_styles(behavior_measures):
-    """
-    Classifies agents into attachment styles based on clustering of behavior measures.
-    
-    :param behavior_measures: A dict where keys are behavior names and values are dicts of measures per agent.
-    """
-    # Assuming each agent has a measure for each behavior, compile a feature matrix
-    features = np.array([list(measures.values()) for measures in behavior_measures.values()]).T
-    
-    # KMeans clustering to classify agents into styles (e.g., 3 clusters for secure, anxious, avoidant)
-    kmeans = KMeans(n_clusters=3)
-    labels = kmeans.fit_predict(features)
-    
-    # Map cluster labels to attachment styles (this mapping might require interpretation)
-    attachment_styles = {0: 'Secure', 1: 'Anxious', 2: 'Avoidant'}
-    classified_styles = [attachment_styles[label] for label in labels]
-    
-    return classified_styles
-
-
-"""
-To explore reciprocal attachment behaviors among pairs or groups of agents, 
-you can calculate mutual information or other correlation measures between agents' behavior measures.
-"""
-
-def analyze_interactive_dynamics(behavior_measures):
-    """
-    Analyzes reciprocal attachment behaviors among agents using mutual information.
-    
-    :param behavior_measures: A dict of behavior measures for each agent.
-    """
-    # Example: Calculate mutual information between pairs of agents for a specific behavior
-    # This example assumes a simple pairwise comparison; extend as needed for group dynamics
-    agents = list(behavior_measures.keys())
-    mi_scores = {}
-    for i, agent1 in enumerate(agents):
-        for agent2 in agents[i+1:]:
-            score = mutual_info_score(behavior_measures[agent1], behavior_measures[agent2])
-            mi_scores[(agent1, agent2)] = score
-    return mi_scores
-
-
-"""
-To validate the model using external assessments of attachment behaviors, 
-you could correlate network-based measures with externally provided attachment scores or classifications.
-"""
-
-def external_validation(behavior_measures, external_scores):
-    """
-    Validates network-based measures against external assessments of attachment behaviors.
-    
-    :param behavior_measures: A dict of network-based behavior measures for each agent.
-    :param external_scores: A dict of external assessment scores for each agent.
-    """
-    # Example: Correlate network-based measures with external scores for proximity seeking
-    network_scores = np.array(list(behavior_measures['proximity_seeking'].values()))
-    external_values = np.array([external_scores[agent] for agent in behavior_measures['proximity_seeking'].keys()])
-    
-    correlation, _ = pearsonr(network_scores, external_values)
-    print(f"Correlation between network-based measures and external assessments: {correlation}")
-
-
-"""
-1. Node Degree Analysis
-Degree Centrality: Measures the number of edges connected to each node. High degree centrality indicates influential individuals in the network.
-In-Degree and Out-Degree (for directed graphs): Specifically looks at the number of incoming and outgoing connections, which can signify individuals who predominantly influence others versus those who are influenced.
-
-2. Path Analysis
-Shortest Paths: Identifies the shortest path(s) between pairs of nodes, which can reveal the most direct influences or connections between individuals.
-Average Path Length: Gives a sense of the overall 'small-world' nature of the network, indicating how closely connected the individuals are on average.
-
-3. Clustering and Community Detection
-Clustering Coefficient: Measures the degree to which nodes in the network tend to cluster together. High clustering might indicate tight-knit groups or communities.
-Community Detection Algorithms (e.g., Louvain method, Girvan-Newman algorithm): Identify clusters or communities within the network where individuals are more densely connected among themselves than with the rest of the network.
-
-4. Centrality Measures
-Betweenness Centrality: Quantifies the number of times a node acts as a bridge along the shortest path between two other nodes. High betweenness centrality points to individuals who serve as key connectors or influencers within the network.
-Closeness Centrality: Measures how close a node is to all other nodes in the network, highlighting individuals who are well-positioned to influence the entire network quickly.
-Eigenvector Centrality: Identifies nodes that are connected to other highly connected nodes, indicating not just individual influence but also the quality of connections in terms of network influence.
-
-5. Assortativity and Homophily
-Assortativity Coefficient: Measures the tendency of nodes to connect to other nodes that are similar or dissimilar to themselves in some attributes, such as behavioral states or hierarchical levels.
-Homophily Analysis: Examines the extent to which similar individuals (e.g., with similar behavioral patterns) tend to cluster together.
-
-6. Network Robustness and Resilience
-Robustness Analysis: Evaluates how the network behaves under failures or targeted attacks, such as the removal of highly central nodes, which can simulate the loss of key individuals.
-Connectivity and Components: Analyzes the network's connectivity, identifying which nodes or edges are critical for maintaining the network's connectedness.
-
-7. Dynamics and Temporal Changes
-Temporal Network Analysis: For networks that change over time, examining how the structure evolves can reveal dynamic patterns of influence and connectivity.
-Influence Propagation Models: Applying models like the Independent Cascade or Linear Threshold model to simulate how influence or information spreads through the network.
-
-8. Mutual Information and Influence
-Mutual Information Network: Beyond pairwise mutual information, analyzing the network to identify motifs or structures that signify complex mutual influences among groups of individuals.
-
-9. Spectral Analysis
-Laplacian Spectrum: Investigating the eigenvalues of the graph Laplacian can reveal properties about the network's structure, such as the number of connected components or bipartite sections.
-
-10. Graph Embeddings and Machine Learning
-Node Embeddings: Using techniques like Node2Vec to generate vector representations of nodes, which can then be used for clustering, visualization, or as features in predictive modeling.
-
-1. Node Degree Analysis
-Degree Centrality: Measures how connected or influential an individual is within the network. High degree centrality indicates individuals who have significant influence over or are influenced by many others, possibly acting as central figures in the group's social dynamics.
-
-2. Path Analysis
-Shortest Paths: Identifying the shortest paths between pairs of individuals can reveal the most direct lines of influence or pathways through which behaviors or information flow.
-Average Path Length: Offers insight into the group's cohesion or separation. A shorter average path length suggests a tightly-knit group where influences can quickly spread, while a longer average implies more isolated subgroups or individuals.
-
-3. Clustering and Community Detection
-Clustering Coefficient: Indicates the presence of tightly-knit subgroups or cliques within the network, where individuals are more densely connected to each other. High clustering might suggest subgroups with strong internal bonds or shared behaviors.
-Community Detection: Helps identify these subgroups or communities within the network explicitly. Communities might represent individuals with similar roles, behaviors, or positions within the group's social hierarchy.
-
-4. Centrality Measures
-Betweenness Centrality: Identifies individuals who serve as bridges or connectors between different parts of the network. These individuals might facilitate or control the flow of influence or information across the group.
-Closeness Centrality: Highlights individuals who can quickly influence or be influenced by others in the network, indicating their strategic position in the social fabric.
-Eigenvector Centrality: Points to individuals who are not just well-connected but are connected to other well-connected individuals, suggesting influential individuals in a network of influencers.
-
-5. Assortativity and Homophily
-Assortativity: Measures how similar individuals tend to connect more frequently than dissimilar ones, possibly in terms of behaviors, roles, or other attributes. This can indicate the presence of homophily - the tendency of individuals to associate with others who are similar to themselves.
-
-6. Network Robustness and Resilience
-Robustness Analysis: Evaluates how the network withstands disruptions, such as the loss of key individuals. This can reveal the network's vulnerability or resilience to changes, highlighting how dependent the group is on specific members for maintaining its social structure.
-
-7. Dynamics and Temporal Changes
-Temporal Network Analysis: Observing how the network structure evolves over time can provide insights into the dynamics of social relationships, the emergence of leaders or central figures, and how external events or internal group dynamics affect social bonds.
-
-8. Mutual Information and Influence
-Mutual Information Network: Analyzing the network based on mutual information can help understand the depth and complexity of influence between individuals, going beyond direct interactions to capture more subtle or indirect influences.
-
-9. Spectral Analysis
-Laplacian Spectrum: Offers a way to understand the network's fundamental properties, such as connectivity and the potential for partitioning the network into distinct communities or groups.
-
-10. Graph Embeddings and Machine Learning
-Node Embeddings: Utilizing machine learning to generate vector representations of individuals based on their network positions can facilitate clustering, visualization, and predictive modeling, revealing hidden patterns in social dynamics and potential predictors of behavior or role within the group.
-"""
-
-
-
-"""
-To fully realize your project of quantifying the influence or mutual information based on differential matrices in the context of Computational Psychodynamics, focusing on interactions and their impact on transition matrices over time, the following components still need to be implemented:
-
-### 1. **Pre- and Post-Interaction Matrix Retrieval**
-   - **Implement `get_pre_interaction_matrix`**: Function to retrieve the transition matrix for an individual immediately before a specified interaction.
-   - **Implement `get_post_interaction_matrix`**: Function to retrieve the transition matrix for an individual immediately after a specified interaction.
-
-### 2. **Event and Interaction Identification**
-   - **Identify Interactions**: A detailed method to parse event sequences and accurately identify interactions between individuals, including the participants and the timestamp of each interaction.
-
-### 3. **Differential Matrix Calculation**
-   - **Optimize `calculate_differential_matrix`**: Ensure this function efficiently computes the difference between pre- and post-interaction matrices, focusing on capturing meaningful changes in transition probabilities.
-
-### 4. **Mutual Information Calculation**
-   - **Refine Calculation**: Verify and potentially optimize the calculation of mutual information using differential matrices to ensure it accurately measures the influence between individuals.
-
-### 5. **Graph Update Mechanism**
-   - **Enhance `update_graph_with_influence`**: Ensure this function correctly updates the graph with mutual information scores, considering how to handle multiple interactions between the same pair of individuals (e.g., averaging, summing, or keeping the maximum score).
-
-### 6. **Threshold for Influence**
-   - **Define and Adjust Threshold**: Establish a suitable threshold for mutual information scores to decide when an influence is significant enough to be represented as an edge in the graph.
-
-### 7. **Graph Visualization Enhancements**
-   - **Improve Visualization**: Implement more sophisticated visualization techniques to effectively display the network, possibly including edge weights (influence scores) and highlighting key nodes based on centrality measures or clustering.
-
-### 8. **Temporal Analysis**
-   - **Longitudinal Tracking**: Develop methods for analyzing how influences evolve over time, potentially involving dynamic graph models or time-series analysis of mutual information scores.
-
-### 9. **Validation and Sensitivity Analysis**
-   - **Validate Approach**: Conduct tests to validate the approach, including checking the mutual information calculation against known benchmarks or simulated data.
-   - **Sensitivity Analysis**: Explore how sensitive the results are to the choice of threshold for influence, the method of updating the graph with new information, and the handling of pre- and post-interaction matrices.
-
-### 10. **Integration and Workflow Optimization**
-   - **Workflow Integration**: Ensure all components are integrated into a coherent workflow, from data preprocessing to final analysis and visualization.
-   - **Optimize Performance**: Optimize the performance for handling large datasets, including efficient data structures for transition matrices and scalable graph analysis techniques.
-
-### 11. **Documentation and Testing**
-   - **Comprehensive Documentation**: Write detailed documentation for each function and component, explaining inputs, outputs, and assumptions.
-   - **Robust Testing**: Implement testing for each component to ensure reliability and accuracy, particularly for custom functions like mutual information calculation based on differential matrices.
-
-By addressing these components, you'll build a robust system for analyzing the dynamic influence of interactions within a network, grounded in the principles of Computational Psychodynamics and informed by detailed behavioral data.
-"""
+    # Export comprehensive results
+    analyzer.export_comprehensive_results('./results/comprehensive_analysis.json')
