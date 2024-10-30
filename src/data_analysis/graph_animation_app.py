@@ -1,3 +1,4 @@
+import os
 import dash
 from dash import html, dcc, Output, Input, State
 import dash_cytoscape as cyto
@@ -6,8 +7,14 @@ import json
 # Load extra layouts
 cyto.load_extra_layouts()
 
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the JSON file
+data_path = os.path.join(current_dir, 'graph_data.json')
+
 # Load graph data from JSON file
-with open('/Users/ajithsenthil/Desktop/SibilanceAIWebsite/CompPsychoBackend/src/data_analysis/graph_data.json', 'r') as f:
+with open(data_path, 'r') as f:
     graph_data = json.load(f)
 
 # Initialize the Dash app
@@ -18,6 +25,7 @@ server = app.server  # For deploying if needed
 is_playing = True
 current_time = 0
 direction = 1  # 1 for forward, -1 for backward
+
 
 # Create the app layout
 app.layout = html.Div([
@@ -106,6 +114,7 @@ app.layout = html.Div([
     )
 ])
 
+
 @app.callback(
     Output('cytoscape', 'elements'),
     Output('current-time', 'children'),
@@ -141,4 +150,4 @@ def update_graph(n_intervals, play_clicks, next_clicks, previous_clicks, reverse
         return graph_data[current_time]['elements'], f"Time: {current_time}"
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, use_reloader=False)
